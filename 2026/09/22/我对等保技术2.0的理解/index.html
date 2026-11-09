@@ -1,0 +1,424 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>网络渗透课程作业：等保 2.0 从被动防御到主动免疫 | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="等保2.0：从被动防御到主动免疫的网络安全框架 写这篇文章的起因是最近在做 CTF 靶场的同时，也在接触企业级安全合规的内容。很多人把等保2.0当作”走流程”，但实际上它是一套完整的网络安全治理框架，值得认真理解。   一、什么是等保2.0网络安全等级保护2.0（简称”等保2.0”）是我国网络安全领域的基本制度，于 2019 年 5 月 13 日正式发布，2019 年 12 月 1 日开始实施。它">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络渗透课程作业：等保 2.0 从被动防御到主动免疫">
+<meta property="og:url" content="http://example.com/2026/09/22/%E6%88%91%E5%AF%B9%E7%AD%89%E4%BF%9D%E6%8A%80%E6%9C%AF2.0%E7%9A%84%E7%90%86%E8%A7%A3/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="等保2.0：从被动防御到主动免疫的网络安全框架 写这篇文章的起因是最近在做 CTF 靶场的同时，也在接触企业级安全合规的内容。很多人把等保2.0当作”走流程”，但实际上它是一套完整的网络安全治理框架，值得认真理解。   一、什么是等保2.0网络安全等级保护2.0（简称”等保2.0”）是我国网络安全领域的基本制度，于 2019 年 5 月 13 日正式发布，2019 年 12 月 1 日开始实施。它">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-09-22T12:27:00.000Z">
+<meta property="article:modified_time" content="2026-11-09T05:39:24.735Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="等级保护">
+<meta property="article:tag" content="网络安全法">
+<meta property="article:tag" content="合规">
+<meta property="article:tag" content="安全治理">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "网络渗透课程作业：等保 2.0 从被动防御到主动免疫",
+  "url": "http://example.com/2026/09/22/%E6%88%91%E5%AF%B9%E7%AD%89%E4%BF%9D%E6%8A%80%E6%9C%AF2.0%E7%9A%84%E7%90%86%E8%A7%A3/",
+  "image": "http://example.com/img/butterfly-icon.png",
+  "datePublished": "2026-09-22T12:27:00.000Z",
+  "dateModified": "2026-11-09T05:39:24.735Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "http://example.com"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2026/09/22/%E6%88%91%E5%AF%B9%E7%AD%89%E4%BF%9D%E6%8A%80%E6%9C%AF2.0%E7%9A%84%E7%90%86%E8%A7%A3/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '网络渗透课程作业：等保 2.0 从被动防御到主动免疫',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">网络渗透课程作业：等保 2.0 从被动防御到主动免疫</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">网络渗透课程作业：等保 2.0 从被动防御到主动免疫</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-09-22T12:27:00.000Z" title="发表于 2026-09-22 20:27:00">2026-09-22</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-09T05:39:24.735Z" title="更新于 2026-11-09 13:39:24">2026-11-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="等保2-0：从被动防御到主动免疫的网络安全框架"><a href="#等保2-0：从被动防御到主动免疫的网络安全框架" class="headerlink" title="等保2.0：从被动防御到主动免疫的网络安全框架"></a>等保2.0：从被动防御到主动免疫的网络安全框架</h1><blockquote>
+<p>写这篇文章的起因是最近在做 CTF 靶场的同时，也在接触企业级安全合规的内容。很多人把等保2.0当作”走流程”，但实际上它是一套完整的网络安全治理框架，值得认真理解。</p>
+</blockquote>
+<hr>
+<h2 id="一、什么是等保2-0"><a href="#一、什么是等保2-0" class="headerlink" title="一、什么是等保2.0"></a>一、什么是等保2.0</h2><p>网络安全等级保护2.0（简称”等保2.0”）是我国网络安全领域的基本制度，于 2019 年 5 月 13 日正式发布，2019 年 12 月 1 日开始实施。它的法律依据是《中华人民共和国网络安全法》第二十一条：</p>
+<blockquote>
+<p>国家实行网络安全等级保护制度。网络运营者应当按照网络安全等级保护制度的要求，履行安全保护义务。</p>
+</blockquote>
+<p>简单说：<strong>只要你运营网络系统，就必须按这个标准做安全，这是法律义务，不是选择题。</strong></p>
+<p>等保2.0的前身是等保1.0（2007年开始实施），但1.0只覆盖传统信息系统，面对云计算、大数据、物联网、工控系统这些新技术新应用已经力不从心。2.0就是在这个背景下升级而来的。</p>
+<hr>
+<h2 id="二、等保2-0-和-1-0-到底有什么区别"><a href="#二、等保2-0-和-1-0-到底有什么区别" class="headerlink" title="二、等保2.0 和 1.0 到底有什么区别"></a>二、等保2.0 和 1.0 到底有什么区别</h2><p>很多人以为2.0只是1.0的”修修补补”，其实不是。核心变化可以用一句话概括：</p>
+<blockquote>
+<p><strong>从”信息系统安全”升级为”网络安全”，从”被动防御”转向”主动免疫”。</strong></p>
+</blockquote>
+<p>具体体现在几个方面：</p>
+<h3 id="1-保护对象扩大了"><a href="#1-保护对象扩大了" class="headerlink" title="1. 保护对象扩大了"></a>1. 保护对象扩大了</h3><table>
+<thead>
+<tr>
+<th>等保1.0</th>
+<th>等保2.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>只覆盖信息系统</td>
+<td>覆盖基础信息网络、云计算平台&#x2F;系统、大数据平台、物联网、工业控制系统、移动互联系统</td>
+</tr>
+</tbody></table>
+<p>以前企业搞个内网系统要等保，现在你用云服务、搞物联网、做工控系统，全都在覆盖范围内。</p>
+<h3 id="2-安全要求结构变了"><a href="#2-安全要求结构变了" class="headerlink" title="2. 安全要求结构变了"></a>2. 安全要求结构变了</h3><p>1.0 的技术要求是”五层”：物理安全、网络安全、主机安全、应用安全、数据安全。</p>
+<p>2.0 改成了”四部分 + 一个中心”：</p>
+<ul>
+<li>物理和环境安全</li>
+<li>网络和通信安全</li>
+<li>设备和计算安全</li>
+<li>应用和数据安全</li>
+<li><strong>安全管理中心</strong>（一个中心）</li>
+</ul>
+<p>这就是著名的**”一个中心，三重防护”**体系。</p>
+<h3 id="3-新增了扩展要求"><a href="#3-新增了扩展要求" class="headerlink" title="3. 新增了扩展要求"></a>3. 新增了扩展要求</h3><p>不同技术场景有不同的扩展要求：</p>
+<ul>
+<li>云计算安全扩展要求</li>
+<li>移动互联安全扩展要求</li>
+<li>物联网安全扩展要求</li>
+<li>工业控制系统安全扩展要求</li>
+</ul>
+<p>通用要求是所有系统都要满足的，扩展要求是根据你的技术栈额外加的。</p>
+<h3 id="4-从”被动”到”主动”"><a href="#4-从”被动”到”主动”" class="headerlink" title="4. 从”被动”到”主动”"></a>4. 从”被动”到”主动”</h3><p>1.0 主要是：定级 → 备案 → 建设整改 → 测评 → 监督检查，五步走完就完事。</p>
+<p>2.0 增加了：</p>
+<ul>
+<li>风险评估</li>
+<li>安全监测</li>
+<li>通报预警</li>
+<li>态势感知</li>
+<li>应急处置</li>
+<li>数据安全保护</li>
+</ul>
+<p>这意味着等保不再是”一年测一次”的静态合规，而是持续运营的动态安全体系。</p>
+<hr>
+<h2 id="三、标准体系长什么样"><a href="#三、标准体系长什么样" class="headerlink" title="三、标准体系长什么样"></a>三、标准体系长什么样</h2><p>等保2.0不是一个标准，而是一套标准体系：</p>
+<table>
+<thead>
+<tr>
+<th>标准号</th>
+<th>标准名称</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GB 17859-1999</td>
+<td>计算机信息系统安全保护等级划分准则</td>
+<td>上位标准，定义五级划分</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 22240-2020</td>
+<td>网络安全等级保护定级指南</td>
+<td>怎么定级</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 22239-2019</td>
+<td>网络安全等级保护基本要求</td>
+<td>每个等级要做什么</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 25070-2019</td>
+<td>网络安全等级保护设计技术要求</td>
+<td>怎么设计安全方案</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 28448-2019</td>
+<td>网络安全等级保护测评要求</td>
+<td>怎么测评打分</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 28449-2018</td>
+<td>网络安全等级保护测评过程指南</td>
+<td>测评流程怎么走</td>
+</tr>
+<tr>
+<td>GB&#x2F;T 25058-2020</td>
+<td>网络安全等级保护实施指南</td>
+<td>整个实施过程怎么落地</td>
+</tr>
+</tbody></table>
+<p>这套标准从定级到建设到测评，形成了完整闭环。</p>
+<hr>
+<h2 id="四、五级划分"><a href="#四、五级划分" class="headerlink" title="四、五级划分"></a>四、五级划分</h2><p>等保2.0把网络系统从低到高分为五级：</p>
+<table>
+<thead>
+<tr>
+<th>等级</th>
+<th>名称</th>
+<th>保护能力</th>
+<th>典型场景</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>第一级</td>
+<td>自主保护级</td>
+<td>自主保护</td>
+<td>内部办公系统</td>
+</tr>
+<tr>
+<td>第二级</td>
+<td>指导保护级</td>
+<td>指导保护</td>
+<td>一般企业官网</td>
+</tr>
+<tr>
+<td>第三级</td>
+<td>监督保护级</td>
+<td>统一安全策略下防护有组织攻击</td>
+<td>政府网站、金融系统、大型互联网平台</td>
+</tr>
+<tr>
+<td>第四级</td>
+<td>强制保护级</td>
+<td>防护国家级攻击</td>
+<td>重要军工、命脉系统</td>
+</tr>
+<tr>
+<td>第五级</td>
+<td>专控保护级</td>
+<td>最高级别防护</td>
+<td>极端关键系统（极少）</td>
+</tr>
+</tbody></table>
+<p>大部分企业接触最多的是<strong>三级</strong>，这也是测评最严格、要求最多的级别。</p>
+<hr>
+<h2 id="五、”一个中心，三重防护”详解"><a href="#五、”一个中心，三重防护”详解" class="headerlink" title="五、”一个中心，三重防护”详解"></a>五、”一个中心，三重防护”详解</h2><p>这是等保2.0技术体系的核心架构：</p>
+<h3 id="一个中心：安全管理中心"><a href="#一个中心：安全管理中心" class="headerlink" title="一个中心：安全管理中心"></a>一个中心：安全管理中心</h3><p>所有安全策略集中管理、所有安全事件集中审计、所有设备集中管控。不能每个管理员各管各的。</p>
+<h3 id="三重防护"><a href="#三重防护" class="headerlink" title="三重防护"></a>三重防护</h3><h4 id="第一重：安全通信网络"><a href="#第一重：安全通信网络" class="headerlink" title="第一重：安全通信网络"></a>第一重：安全通信网络</h4><ul>
+<li>网络架构冗余</li>
+<li>通信传输加密（VPN、TLS）</li>
+<li>可信验证</li>
+</ul>
+<h4 id="第二重：安全区域边界"><a href="#第二重：安全区域边界" class="headerlink" title="第二重：安全区域边界"></a>第二重：安全区域边界</h4><ul>
+<li>边界访问控制（防火墙）</li>
+<li>入侵防范（IDS&#x2F;IPS）</li>
+<li>恶意代码防范</li>
+<li>安全审计</li>
+</ul>
+<h4 id="第三重：安全计算环境"><a href="#第三重：安全计算环境" class="headerlink" title="第三重：安全计算环境"></a>第三重：安全计算环境</h4><p>这是最核心的部分，覆盖每一台设备、每个应用、每个数据库：</p>
+<ul>
+<li>身份鉴别（双因素认证）</li>
+<li>访问控制（最小权限、三权分立）</li>
+<li>安全审计（日志留存6个月以上）</li>
+<li>入侵防范</li>
+<li>恶意代码防范</li>
+<li>数据完整性&#x2F;保密性</li>
+<li>备份恢复</li>
+</ul>
+<hr>
+<h2 id="六、三级要求到底有多严"><a href="#六、三级要求到底有多严" class="headerlink" title="六、三级要求到底有多严"></a>六、三级要求到底有多严</h2><p>拿三级来说，技术+管理加起来有 200 多个控制点。挑几个最容易踩坑的说：</p>
+<h3 id="身份鉴别"><a href="#身份鉴别" class="headerlink" title="身份鉴别"></a>身份鉴别</h3><p><strong>要求</strong>：两种或以上组合鉴别技术，其中一种必须用密码技术。<br><strong>常见坑</strong>：账号密码 + 短信验证码？不行，短信不算密码技术。得用 UKey、动态令牌、数字证书这种。</p>
+<h3 id="访问控制"><a href="#访问控制" class="headerlink" title="访问控制"></a>访问控制</h3><p><strong>要求</strong>：三权分立——系统管理员、安全管理员、审计员三个人不能是同一个人。<br><strong>常见坑</strong>：运维一个人管所有，既管系统又管审计，直接扣分。</p>
+<h3 id="安全审计"><a href="#安全审计" class="headerlink" title="安全审计"></a>安全审计</h3><p><strong>要求</strong>：日志留存不少于 6 个月，覆盖所有用户的关键操作。<br><strong>常见坑</strong>：日志只存了 3 个月，或者只记了登录没记操作。</p>
+<h3 id="入侵防范"><a href="#入侵防范" class="headerlink" title="入侵防范"></a>入侵防范</h3><p><strong>要求</strong>：能够检测到对重要节点的入侵行为并报警。<br><strong>常见坑</strong>：只装了杀毒软件，没有 IDS&#x2F;IPS，没有入侵检测。</p>
+<hr>
+<h2 id="七、等保落地的完整流程"><a href="#七、等保落地的完整流程" class="headerlink" title="七、等保落地的完整流程"></a>七、等保落地的完整流程</h2><p>很多人问”我要做等保，第一步干嘛？”，完整流程是：</p>
+<ol>
+<li><strong>系统定级</strong>：确定你的系统是几级，专家评审后报公安机关备案</li>
+<li><strong>备案</strong>：到属地公安机关网安部门备案，拿到备案证明</li>
+<li><strong>建设整改</strong>：对照标准，缺什么补什么，这是最花钱的阶段</li>
+<li><strong>等级测评</strong>：找有资质的第三方测评机构做测评，出具测评报告</li>
+<li><strong>监督检查</strong>：公安机关定期检查，每年至少测一次（三级）</li>
+</ol>
+<p>整个周期一般 3-6 个月，三级系统光测评费就十几万，建设整改更是几十万起步。</p>
+<hr>
+<h2 id="八、我的理解：等保不是”过考试”"><a href="#八、我的理解：等保不是”过考试”" class="headerlink" title="八、我的理解：等保不是”过考试”"></a>八、我的理解：等保不是”过考试”</h2><p>做了这么多 CTF 题，再回头看等保，最大的感受是：</p>
+<p><strong>等保2.0本质上是一套”安全运营体系”，不是一份”考卷”。</strong></p>
+<p>很多企业的做法是：测评前突击整改，找个测评机构走过场，拿到报告就完事。但等保2.0的真正价值在于：</p>
+<ul>
+<li><strong>主动防御</strong>：不是等被打了才修，而是平时就监测、就预警</li>
+<li><strong>动态调整</strong>：系统变了、业务变了，安全策略也要跟着变</li>
+<li><strong>整体防护</strong>：不是买个防火墙就完事，是技术+管理+人员+流程的全方位体系</li>
+</ul>
+<p>从 CTF 视角看，等保2.0的三级要求基本上就是”企业级安全运维的标准答案”：</p>
+<ul>
+<li>身份鉴别 → 对应 CTF 里的弱口令、认证绕过</li>
+<li>访问控制 → 对应越权访问、权限提升</li>
+<li>入侵防范 → 对应 Web 漏洞扫描、IDS 告警</li>
+<li>安全审计 → 对应日志分析、溯源</li>
+</ul>
+<p>理解了等保，就理解了企业安全团队每天在干嘛。</p>
+<hr>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a target="_blank" rel="noopener" href="http://www.mps.gov.cn:8080/n6557563/c7369073/content.html">网络安全等级保护2.0标准解读 - 公安部网站</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.mps.gov.cn/n6557563/c7369120/content.html">贯彻落实网络安全等级保护制度和关键信息基础设施安全保护制度解读 - 公安部</a></li>
+<li><a target="_blank" rel="noopener" href="http://www.qstheory.cn/2019-09/10/c_1124981333.htm">等保2.0来了，网络安全将发生哪些变化 - 求是网</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.imtcme.edu.cn/__local/0/44/9D/245F70465F9399E2E96797959F3_B6D3CF6D_EAD058.pdf">GB&#x2F;T 22239-2019 信息安全技术 网络安全等级保护基本要求</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cstc.org.cn/__local/5/74/BC/77ED70506225199A999EE86AAD4_22FCF758_2AE52F.pdf">等级保护2.0解读 - 中国软件评测中心</a></li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2026/09/22/%E6%88%91%E5%AF%B9%E7%AD%89%E4%BF%9D%E6%8A%80%E6%9C%AF2.0%E7%9A%84%E7%90%86%E8%A7%A3/">http://example.com/2026/09/22/%E6%88%91%E5%AF%B9%E7%AD%89%E4%BF%9D%E6%8A%80%E6%9C%AF2.0%E7%9A%84%E7%90%86%E8%A7%A3/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E7%AD%89%E7%BA%A7%E4%BF%9D%E6%8A%A4/">等级保护</a><a class="post-meta__tags" href="/tags/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8%E6%B3%95/">网络安全法</a><a class="post-meta__tags" href="/tags/%E5%90%88%E8%A7%84/">合规</a><a class="post-meta__tags" href="/tags/%E5%AE%89%E5%85%A8%E6%B2%BB%E7%90%86/">安全治理</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/24/QQ-traffic-analysis/" title="网络渗透课程作业：QQ 客户端流量抓包与协议特征分析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">网络渗透课程作业：QQ 客户端流量抓包与协议特征分析</div></div><div class="info-2"><div class="info-item-1">QQ 流量抓包与分析实验报告一、实验目的通过 Wireshark 捕获 QQ 客户端的网络流量，分析其通信所使用的传输层协议（TCP/UDP）、数据是否加密，并观察QQ客户端与服务器之间的保活机制，理解即使通讯软件如何通过周期性心跳维持在线状态，并分析其底层传输特征底层。 二、实验环境与方法 环境：Windows 主机 + Wireshark + QQ 客户端 方法： 启动 Wireshark，选择WLAN网卡开始捕获。 登录 QQ，进行发送消息、传输文件等操作。 停止捕获，用过滤器筛选 QQ 相关流量。 分析每个数据包的传输层协议、端口号、载荷内容。 对疑似文件传输的流量，尝试根据文件头部特征码提取原始数据。    三、隐私声明为保护个人隐私，本文中所有涉及账号、密码、聊天内容、IP 地址等敏感信息，均已做脱敏处理（如打码、替换为 xxx）。文中出现的文件传输示例仅用于技术分析，不涉及真实个人数据。 四、实验分析4.1 传输层协议分析（TCP &#x2F; UDP）通过 Wireshark 捕获 QQ 客户端流量，在显示过滤器中使用 oicq 未能筛选出任何数据包。进一步使用本...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">记录 CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">8</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">26</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%AD%89%E4%BF%9D2-0%EF%BC%9A%E4%BB%8E%E8%A2%AB%E5%8A%A8%E9%98%B2%E5%BE%A1%E5%88%B0%E4%B8%BB%E5%8A%A8%E5%85%8D%E7%96%AB%E7%9A%84%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8%E6%A1%86%E6%9E%B6"><span class="toc-number">1.</span> <span class="toc-text">等保2.0：从被动防御到主动免疫的网络安全框架</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%BB%80%E4%B9%88%E6%98%AF%E7%AD%89%E4%BF%9D2-0"><span class="toc-number">1.1.</span> <span class="toc-text">一、什么是等保2.0</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E7%AD%89%E4%BF%9D2-0-%E5%92%8C-1-0-%E5%88%B0%E5%BA%95%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB"><span class="toc-number">1.2.</span> <span class="toc-text">二、等保2.0 和 1.0 到底有什么区别</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-%E4%BF%9D%E6%8A%A4%E5%AF%B9%E8%B1%A1%E6%89%A9%E5%A4%A7%E4%BA%86"><span class="toc-number">1.2.1.</span> <span class="toc-text">1. 保护对象扩大了</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%AE%89%E5%85%A8%E8%A6%81%E6%B1%82%E7%BB%93%E6%9E%84%E5%8F%98%E4%BA%86"><span class="toc-number">1.2.2.</span> <span class="toc-text">2. 安全要求结构变了</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E6%96%B0%E5%A2%9E%E4%BA%86%E6%89%A9%E5%B1%95%E8%A6%81%E6%B1%82"><span class="toc-number">1.2.3.</span> <span class="toc-text">3. 新增了扩展要求</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E4%BB%8E%E2%80%9D%E8%A2%AB%E5%8A%A8%E2%80%9D%E5%88%B0%E2%80%9D%E4%B8%BB%E5%8A%A8%E2%80%9D"><span class="toc-number">1.2.4.</span> <span class="toc-text">4. 从”被动”到”主动”</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%A0%87%E5%87%86%E4%BD%93%E7%B3%BB%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7"><span class="toc-number">1.3.</span> <span class="toc-text">三、标准体系长什么样</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BA%94%E7%BA%A7%E5%88%92%E5%88%86"><span class="toc-number">1.4.</span> <span class="toc-text">四、五级划分</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E2%80%9D%E4%B8%80%E4%B8%AA%E4%B8%AD%E5%BF%83%EF%BC%8C%E4%B8%89%E9%87%8D%E9%98%B2%E6%8A%A4%E2%80%9D%E8%AF%A6%E8%A7%A3"><span class="toc-number">1.5.</span> <span class="toc-text">五、”一个中心，三重防护”详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E4%B8%AD%E5%BF%83%EF%BC%9A%E5%AE%89%E5%85%A8%E7%AE%A1%E7%90%86%E4%B8%AD%E5%BF%83"><span class="toc-number">1.5.1.</span> <span class="toc-text">一个中心：安全管理中心</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%89%E9%87%8D%E9%98%B2%E6%8A%A4"><span class="toc-number">1.5.2.</span> <span class="toc-text">三重防护</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E9%87%8D%EF%BC%9A%E5%AE%89%E5%85%A8%E9%80%9A%E4%BF%A1%E7%BD%91%E7%BB%9C"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">第一重：安全通信网络</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E9%87%8D%EF%BC%9A%E5%AE%89%E5%85%A8%E5%8C%BA%E5%9F%9F%E8%BE%B9%E7%95%8C"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">第二重：安全区域边界</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E9%87%8D%EF%BC%9A%E5%AE%89%E5%85%A8%E8%AE%A1%E7%AE%97%E7%8E%AF%E5%A2%83"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">第三重：安全计算环境</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E4%B8%89%E7%BA%A7%E8%A6%81%E6%B1%82%E5%88%B0%E5%BA%95%E6%9C%89%E5%A4%9A%E4%B8%A5"><span class="toc-number">1.6.</span> <span class="toc-text">六、三级要求到底有多严</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BA%AB%E4%BB%BD%E9%89%B4%E5%88%AB"><span class="toc-number">1.6.1.</span> <span class="toc-text">身份鉴别</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E6%8E%A7%E5%88%B6"><span class="toc-number">1.6.2.</span> <span class="toc-text">访问控制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E5%85%A8%E5%AE%A1%E8%AE%A1"><span class="toc-number">1.6.3.</span> <span class="toc-text">安全审计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%A5%E4%BE%B5%E9%98%B2%E8%8C%83"><span class="toc-number">1.6.4.</span> <span class="toc-text">入侵防范</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E7%AD%89%E4%BF%9D%E8%90%BD%E5%9C%B0%E7%9A%84%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B"><span class="toc-number">1.7.</span> <span class="toc-text">七、等保落地的完整流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%88%91%E7%9A%84%E7%90%86%E8%A7%A3%EF%BC%9A%E7%AD%89%E4%BF%9D%E4%B8%8D%E6%98%AF%E2%80%9D%E8%BF%87%E8%80%83%E8%AF%95%E2%80%9D"><span class="toc-number">1.8.</span> <span class="toc-text">八、我的理解：等保不是”过考试”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="toc-number">1.9.</span> <span class="toc-text">参考资料</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/09/hello-world/" title="Hello World">Hello World</a><time datetime="2026-11-09T04:43:28.783Z" title="发表于 2026-11-09 12:43:28">2026-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集">网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集</a><time datetime="2026-11-09T02:47:00.000Z" title="发表于 2026-11-09 10:47:00">2026-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马">网络渗透课程作业：Meterpreter 远程控制与一句话木马</a><time datetime="2026-11-06T08:57:00.000Z" title="发表于 2026-11-06 16:57:00">2026-11-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现">网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现</a><time datetime="2026-11-06T08:55:00.000Z" title="发表于 2026-11-06 16:55:00">2026-11-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/30/%E7%AC%91%E8%84%B8%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现">网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现</a><time datetime="2026-10-30T11:54:00.000Z" title="发表于 2026-10-30 19:54:00">2026-10-30</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

