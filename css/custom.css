@@ -1,0 +1,74 @@
+/* ============================================
+   Qu0rtz-blip 博客自定义样式
+   配合 Butterfly 主题使用；回退时删除本文件
+   并把 inject.head 里这一行去掉即可
+   ============================================ */
+
+/* 背景固定不随滚动、铺满 */
+body {
+  background-attachment: fixed !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+/* 首页大标题：渐变文字 */
+#site-title {
+  background: linear-gradient(120deg, #7ec8ff, #b39dff 55%, #ff9ec7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none !important;
+  letter-spacing: 2px;
+}
+
+/* 副标题（打字机）微调 */
+#site-subtitle {
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}
+
+/* 首页文章卡片：半透明毛玻璃 + 悬浮上浮 */
+#recent-posts > .recent-post-item {
+  background: rgba(255, 255, 255, .88) !important;
+  backdrop-filter: blur(8px);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+#recent-posts > .recent-post-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .22) !important;
+}
+[data-theme="dark"] #recent-posts > .recent-post-item {
+  background: rgba(22, 24, 32, .78) !important;
+}
+
+/* 侧边栏卡片同样半透明 */
+.card-widget {
+  background: rgba(255, 255, 255, .88) !important;
+  backdrop-filter: blur(8px);
+}
+[data-theme="dark"] .card-widget {
+  background: rgba(22, 24, 32, .78) !important;
+}
+
+/* 顶栏导航：轻微毛玻璃 */
+#nav {
+  backdrop-filter: blur(10px);
+}
+
+/* 彩色滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6a8cff, #a06bff);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 链接悬浮变色过渡 */
+a {
+  transition: color .2s ease;
+}
