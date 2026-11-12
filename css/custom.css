@@ -21,38 +21,113 @@ body {
   letter-spacing: 2px;
 }
 
-/* 副标题（打字机）微调 */
-#site-subtitle {
-  letter-spacing: 1px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+/* 副标题（打字机）样式见下方统一区块 */
+
+/* 文字区域（文章卡片/侧栏/正文容器）半透明，透出固定背景图 */
+:root {
+  --card-bg: rgba(255, 255, 255, .55);
+}
+[data-theme="dark"] {
+  --card-bg: rgba(22, 24, 32, .72);
 }
 
-/* 首页文章卡片：半透明毛玻璃 + 悬浮上浮 */
-#recent-posts > .recent-post-item {
-  background: rgba(255, 255, 255, .88) !important;
-  backdrop-filter: blur(8px);
+/* 首页文章卡片：半透明毛玻璃 + 悬浮上浮（兼容普通与瀑布流布局） */
+#recent-posts .recent-post-item {
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   transition: transform .25s ease, box-shadow .25s ease;
 }
-#recent-posts > .recent-post-item:hover {
+#recent-posts .recent-post-item:hover {
   transform: translateY(-6px);
   box-shadow: 0 14px 30px rgba(0, 0, 0, .22) !important;
 }
-[data-theme="dark"] #recent-posts > .recent-post-item {
-  background: rgba(22, 24, 32, .78) !important;
+
+/* 首页双栏网格：两列等宽卡片（index_layout: 4 + 本段自定义） */
+#recent-posts .recent-post-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+#recent-posts .recent-post-items > .recent-post-item {
+  display: flex;
+  flex-direction: column;
+  width: 100% !important;
+  height: 100%;
+  margin: 0 !important;
+  border-radius: 10px;
+  overflow: hidden;
+}
+/* 封面统一高度，两列才整齐 */
+#recent-posts .recent-post-item .post_cover {
+  width: 100% !important;
+  height: 190px !important;
+  flex: 0 0 auto;
+}
+#recent-posts .recent-post-item .recent-post-info {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 18px !important;
+}
+/* 摘要裁到两行，卡片高度一致 */
+#recent-posts .recent-post-info .content {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: auto;
+}
+/* 分页/广告条占满整行，不参与双列 */
+#recent-posts .recent-post-items > #pagination,
+#recent-posts .recent-post-items > .pagination,
+#recent-posts .recent-post-items > .ads-wrap {
+  grid-column: 1 / -1;
+}
+@media screen and (max-width: 768px) {
+  #recent-posts .recent-post-items {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* 页脚底色：主题默认蓝色改为黑灰 */
+#footer {
+  background-color: #1a1a1c;
+}
+#footer a:hover {
+  color: #9db8ff;
 }
 
 /* 侧边栏卡片同样半透明 */
 .card-widget {
-  background: rgba(255, 255, 255, .88) !important;
-  backdrop-filter: blur(8px);
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
-[data-theme="dark"] .card-widget {
-  background: rgba(22, 24, 32, .78) !important;
+
+/* 正文排版容器（文章页/独立页面）同步半透明 */
+.layout > div:first-child:not(.nc) {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 /* 顶栏导航：轻微毛玻璃 */
 #nav {
   backdrop-filter: blur(10px);
+}
+
+/* 副标题（打字机）：整体调小一档 */
+#site-subtitle {
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+  font-size: 1.05em;
+}
+@media screen and (min-width: 768px) {
+  #site-subtitle {
+    font-size: 1.15em;
+  }
 }
 
 /* 彩色滚动条 */

