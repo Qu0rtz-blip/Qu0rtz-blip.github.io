@@ -23,19 +23,61 @@ body {
 
 /* 副标题（打字机）样式见下方统一区块 */
 
-/* 文字区域（文章卡片/侧栏/正文容器）半透明，透出固定背景图 */
-:root {
-  --card-bg: rgba(255, 255, 255, .55);
-}
-[data-theme="dark"] {
-  --card-bg: rgba(22, 24, 32, .72);
+/* ============================================
+   毛玻璃卡片（Glassmorphism）
+   深色半透明底（alpha .5）+ blur(10px) + 浅色文字
+   ============================================ */
+#recent-posts .recent-post-item,
+.card-widget,
+.layout > div:first-child:not(.nc) {
+  /* 透出底层背景图：0.5 的黑，既有透视感又不至于糊成一片 */
+  background: rgba(0, 0, 0, .5) !important;
+  background-color: rgba(0, 0, 0, .5) !important;
+  /* 背景模糊：即使很透，文字也不会和背景图线条混在一起 */
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .3) !important;
+  /* 深底配浅字，解决文字看不清 */
+  color: rgba(236, 240, 248, .92) !important;
+  /* 卡片内部的文字相关变量同步切换为浅色 */
+  --card-bg: rgba(0, 0, 0, .5);
+  --font-color: rgba(236, 240, 248, .92);
+  --text-highlight-color: #ffffff;
+  --card-meta: rgba(222, 229, 242, .72);
+  --blockquote-color: rgba(226, 232, 244, .82);
+  --toc-link-color: rgba(226, 232, 244, .85);
 }
 
-/* 首页文章卡片：半透明毛玻璃 + 悬浮上浮（兼容普通与瀑布流布局） */
+/* 深色模式下略加深一档，避免和背景图糊在一起 */
+[data-theme="dark"] #recent-posts .recent-post-item,
+[data-theme="dark"] .card-widget,
+[data-theme="dark"] .layout > div:first-child:not(.nc) {
+  background: rgba(0, 0, 0, .55) !important;
+  background-color: rgba(0, 0, 0, .55) !important;
+  border-color: rgba(255, 255, 255, .08);
+}
+
+/* 卡片内的元信息、标签等次要文字统一降一档亮度 */
+#recent-posts .recent-post-item .article-meta-wrap,
+#recent-posts .recent-post-item .article-meta-wrap a,
+.layout > div:first-child:not(.nc) .post-meta,
+.layout > div:first-child:not(.nc) .post-meta-wrap,
+.card-widget .card-info-data .headline,
+.card-widget .card-info-data .length-num {
+  color: rgba(222, 229, 242, .72) !important;
+}
+/* 卡片内正文链接：深底上用更亮的蓝 */
+#recent-posts .recent-post-item .article-title,
+.layout > div:first-child:not(.nc) .post-title {
+  color: #fff !important;
+}
+.layout > div:first-child:not(.nc) #article-container a {
+  color: #8ecaff;
+}
+
+/* 首页文章卡片：悬浮上浮（兼容普通与瀑布流布局） */
 #recent-posts .recent-post-item {
-  background: var(--card-bg) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   transition: transform .25s ease, box-shadow .25s ease;
 }
 #recent-posts .recent-post-item:hover {
@@ -98,19 +140,6 @@ body {
 }
 #footer a:hover {
   color: #9db8ff;
-}
-
-/* 侧边栏卡片同样半透明 */
-.card-widget {
-  background: var(--card-bg) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-/* 正文排版容器（文章页/独立页面）同步半透明 */
-.layout > div:first-child:not(.nc) {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
 }
 
 /* 顶栏导航：轻微毛玻璃 */
