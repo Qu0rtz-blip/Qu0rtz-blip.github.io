@@ -1,0 +1,292 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Pikachu靶场通关：越权 | Qu0rtz-blip 的博客</title><meta name="author" content="Qu0rtz-blip"><meta name="copyright" content="Qu0rtz-blip"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="皮卡丘（Pikachu）越权通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在该校验的地方没校验。水平越权是横向借别人的数据，垂直越权是纵向借别人的权限">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pikachu靶场通关：越权">
+<meta property="og:url" content="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Overpermission/index.html">
+<meta property="og:site_name" content="Qu0rtz-blip 的博客">
+<meta property="og:description" content="皮卡丘（Pikachu）越权通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http:&#x2F;&#x2F;127.0.0.1&#x2F;pikachu&#x2F;   本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在该校验的地方没校验。水平越权是横向借别人的数据，垂直越权是纵向借别人的权限">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://qu0rtz-blip.github.io/img/cover-1.jpg">
+<meta property="article:published_time" content="2026-11-26T04:00:00.000Z">
+<meta property="article:modified_time" content="2026-11-26T11:44:49.482Z">
+<meta property="article:author" content="Qu0rtz-blip">
+<meta property="article:tag" content="Pikachu靶场">
+<meta property="article:tag" content="越权">
+<meta property="article:tag" content="水平越权">
+<meta property="article:tag" content="垂直越权">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://qu0rtz-blip.github.io/img/cover-1.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Pikachu靶场通关：越权",
+  "url": "https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Overpermission/",
+  "image": "https://qu0rtz-blip.github.io/img/cover-1.jpg",
+  "datePublished": "2026-11-26T04:00:00.000Z",
+  "dateModified": "2026-11-26T11:44:49.482Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Qu0rtz-blip",
+      "url": "https://qu0rtz-blip.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Overpermission/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.2"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        try {
+          const data = { value }
+
+          if (ttl != null) {
+            data.expiry = Date.now() + ttl * 86400000
+          }
+
+          localStorage.setItem(key, JSON.stringify(data))
+        } catch (e) {
+          console.error(e)
+        }
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.1/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Pikachu靶场通关：越权',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div class="bg-animation" id="web_bg" style="background-image: url(/img/bg-site.jpg);"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header" style="background-image: url(/img/cover-1.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Qu0rtz-blip 的博客</span></a><a class="nav-page-title" href="/"><span class="site-name">Pikachu靶场通关：越权</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">Pikachu靶场通关：越权</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-11-26T11:44:49.482Z" title="更新于 2026-11-26 19:44:49">2026-11-26</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%89%E5%85%A8/">网络安全</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="皮卡丘（Pikachu）越权通关记录"><a href="#皮卡丘（Pikachu）越权通关记录" class="headerlink" title="皮卡丘（Pikachu）越权通关记录"></a>皮卡丘（Pikachu）越权通关记录</h1><blockquote>
+<p><strong>实验环境</strong>：Windows 10 + Pikachu + Burp Suite<br><strong>靶场地址</strong>：<code>http://127.0.0.1/pikachu/</code></p>
+</blockquote>
+<blockquote>
+<p>本次记录皮卡丘靶场 Over Permission（越权）模块两个关卡的通关过程。<br>越权不是一个”技术点”，而是一个”校验点”：功能本身没写错，错在<strong>该校验的地方没校验</strong>。<br>水平越权是横向借别人的数据，垂直越权是纵向借别人的权限。</p>
+</blockquote>
+<hr>
+<h2 id="一、越权"><a href="#一、越权" class="headerlink" title="一、越权"></a>一、越权</h2><h3 id="1-1-两个方向"><a href="#1-1-两个方向" class="headerlink" title="1.1 两个方向"></a>1.1 两个方向</h3><p>越权的定义很朴素：<strong>用 A 的身份，做了 B 才能做的事，而且做成了</strong>。按”越”的方向分两种：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">水平越权（Horizontal）                     垂直越权（Vertical）</span><br><span class="line">同一层级的用户之间互相越界                  低权限用户使用高权限功能</span><br><span class="line">   ↓                                          ↓</span><br><span class="line">普通用户 A 看到/改掉普通用户 B 的资料        普通用户进了管理员后台、删了用户</span><br><span class="line">权限级别没变，越的是&quot;数据归属&quot;              越的是&quot;功能权限&quot;</span><br></pre></td></tr></table></figure>
+
+<p>它和”未授权访问”容易混：未授权是<strong>根本没登录</strong>就进了页面；越权是<strong>登录了，但用了不属于自己的身份&#x2F;权限</strong>。两者的根因也一致——后台把”该不该给”交给了前端传来的参数，而不是服务端的登录态。</p>
+<h3 id="1-2-常见出问题的地方"><a href="#1-2-常见出问题的地方" class="headerlink" title="1.2 常见出问题的地方"></a>1.2 常见出问题的地方</h3><p>皮卡丘概述页说得很准：越权容易出现在权限页面的<strong>增、删、改、查</strong>上。因为这些操作通常需要三个要素，缺一个就可能出事：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">① 我是谁        ← 应该来自服务端 Session / Token</span><br><span class="line">② 我要操作谁    ← 可以来自前端（ID、用户名）</span><br><span class="line">③ 我有没有权限  ← 必须由服务端用 ① 和 ② 的关系算出来</span><br></pre></td></tr></table></figure>
+
+<p>三种典型错法：<strong>① 用了前端传的值冒充</strong>（水平越权的经典）、<strong>③ 只在部分页面做了校验</strong>（垂直越权的经典）、<strong>② 直接拿 ID 查库不比对归属</strong>（改 ID 就能改别人的数据）。</p>
+<h3 id="1-3-关卡入口"><a href="#1-3-关卡入口" class="headerlink" title="1.3 关卡入口"></a>1.3 关卡入口</h3><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1/pikachu/vul/overpermission/op.php              ← 概述页</span><br><span class="line">http://127.0.0.1/pikachu/vul/overpermission/op1/op1_login.php   ← 水平越权（会员中心）</span><br><span class="line">http://127.0.0.1/pikachu/vul/overpermission/op2/op2_login.php   ← 垂直越权（后台管理）</span><br></pre></td></tr></table></figure>
+
+<p>两个小题用的是不同的账号体系：<code>op1</code> 是会员表（<code>member</code>，如 <code>lili/123456</code>），<code>op2</code> 是用户表（<code>users</code>，普通用户 <code>pikachu/000000</code>、管理员 <code>admin/123456</code>）。</p>
+<hr>
+<h2 id="二、通关记录"><a href="#二、通关记录" class="headerlink" title="二、通关记录"></a>二、通关记录</h2><h3 id="2-1-水平越权：换一个-username-就看别人的资料"><a href="#2-1-水平越权：换一个-username-就看别人的资料" class="headerlink" title="2.1 水平越权：换一个 username 就看别人的资料"></a>2.1 水平越权：换一个 username 就看别人的资料</h3><p>用会员账号 <code>kobe / 123456</code> 登录，进入会员中心：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/overpermission/op1/op1_mem.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/kobe.png"></p>
+<p>页面显示的是 kobe 自己的资料。</p>
+<p>我们可以直接修改 URL 里的参数，比如修改为 vince：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/overpermission/op1/op1_mem.php?username=lili&amp;submit=1</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/lili.png"></p>
+<p>页面显示的变成了 <strong>lili 的姓名、手机号、住址、邮箱</strong>——而我们登录的身份是 lili。水平越权成立。</p>
+<blockquote>
+<p>这里的关键<strong>后台拿这个参数去查库时，没有和 Session 里的身份比对</strong>。换句话说：只要知道（或猜到、遍历到）别人的 username，就能把他的资料挨个看一遍。真实场景里 ID 是自增数字时，改一个数字就是一个人。</p>
+</blockquote>
+<h3 id="2-2-垂直越权：普通用户直接用管理员的功能"><a href="#2-2-垂直越权：普通用户直接用管理员的功能" class="headerlink" title="2.2 垂直越权：普通用户直接用管理员的功能"></a>2.2 垂直越权：普通用户直接用管理员的功能</h3><p>这关有两类账号。</p>
+<p>先用<code>admin/123456</code>登录一次</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/super_admin.png"></p>
+<p>超级管理员界面不仅有详细的用户信息，还可以添加、删除、查看用户列表。</p>
+<p>再用普通管理员 <code>pikachu/000000</code> 登录一次，看看后台长什么样：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/overpermission/op2/op2_user.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/admin.png"></p>
+<p>普通管理员页面有用户列表，页面还提示只有查看权限。</p>
+<p>页面写着”欢迎来到后台管理中心,<strong>您只有查看权限</strong>“。</p>
+<p>但<strong>没有按钮不等于没有页面</strong>。直接在地址栏敲管理员的添加用户页：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">http://127.0.0.1:8081/vul/overpermission/op2/op2_admin_edit.php</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/pikachu_edit.png"></p>
+<p>表单打开了——普通用户拿到了”添加用户”这个管理员才该有的功能。填一个 <code>hacker / 123456</code> 提交：</p>
+<p><img src="/images/%E7%9A%AE%E5%8D%A1%E4%B8%98%E9%9D%B6%E5%9C%BA/Pikachu-Overpermission/hacker.png"></p>
+<p>添加成功，回到用户列表能看到新账号。<strong>一个 level&#x3D;2 的用户，干了 level&#x3D;1 的事</strong>，垂直越权成立。</p>
+<blockquote>
+</blockquote>
+<hr>
+<h2 id="三、源码分析：漏洞是怎么写出来的"><a href="#三、源码分析：漏洞是怎么写出来的" class="headerlink" title="三、源码分析：漏洞是怎么写出来的"></a>三、源码分析：漏洞是怎么写出来的</h2><h3 id="3-1-关卡：用前端传的值代替登录态（水平越权）"><a href="#3-1-关卡：用前端传的值代替登录态（水平越权）" class="headerlink" title="3.1 关卡：用前端传的值代替登录态（水平越权）"></a>3.1 关卡：用前端传的值代替登录态（水平越权）</h3><p><code>op1_mem.php</code> 的核心代码：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 判断是否登录，没有登录不能访问</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">check_op_login</span>(<span class="variable">$link</span>))&#123;</span><br><span class="line">    <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:op1_login.php&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"><span class="variable">$html</span>=<span class="string">&#x27;&#x27;</span>;</span><br><span class="line"><span class="keyword">if</span>(<span class="keyword">isset</span>(<span class="variable">$_GET</span>[<span class="string">&#x27;submit&#x27;</span>]) &amp;&amp; <span class="variable">$_GET</span>[<span class="string">&#x27;username&#x27;</span>]!=<span class="literal">null</span>)&#123;</span><br><span class="line">    <span class="comment">//没有使用session来校验,而是使用的传进来的值，权限校验出现问题,这里应该跟登录态关系进行绑定</span></span><br><span class="line">    <span class="variable">$username</span>=<span class="title function_ invoke__">escape</span>(<span class="variable">$link</span>, <span class="variable">$_GET</span>[<span class="string">&#x27;username&#x27;</span>]);</span><br><span class="line">    <span class="variable">$query</span>=<span class="string">&quot;select * from member where username=&#x27;<span class="subst">$username</span>&#x27;&quot;</span>;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码分析：</p>
+<ul>
+<li>登录校验只做了”有没有登录”（<code>check_op_login</code>），**没做”登录的是不是这个人”**；</li>
+<li>查询条件 <code>$username</code> 直接来自 <code>$_GET</code>，而 Session 里明明存着 <code>$_SESSION[&#39;op&#39;][&#39;username&#39;]</code>——正确写法应该是 <code>$username = $_SESSION[&#39;op&#39;][&#39;username&#39;]</code>，连参数都不需要；</li>
+<li></li>
+<li>顺带一提：这里用 <code>escape()</code> 转义了，防住了 SQL 注入，但<strong>防注入不等于防越权</strong>——两件事。</li>
+</ul>
+<h3 id="3-2-关卡：同一模块两套校验标准（垂直越权）"><a href="#3-2-关卡：同一模块两套校验标准（垂直越权）" class="headerlink" title="3.2 关卡：同一模块两套校验标准（垂直越权）"></a>3.2 关卡：同一模块两套校验标准（垂直越权）</h3><p><code>op2_admin.php</code>（管理员页）的校验是完整的：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//如果没登录，或者level不等于1，都就干掉</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">check_op2_login</span>(<span class="variable">$link</span>) || <span class="variable">$_SESSION</span>[<span class="string">&#x27;op2&#x27;</span>][<span class="string">&#x27;level&#x27;</span>]!=<span class="number">1</span>)&#123;</span><br><span class="line">    <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:op2_login.php&quot;</span>);</span><br><span class="line">    <span class="keyword">exit</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而 <code>op2_admin_edit.php</code>（添加用户页）的校验少了后半段：</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//这里只是验证了登录状态，并没有验证级别，所以存在越权问题。</span></span><br><span class="line"><span class="keyword">if</span>(!<span class="title function_ invoke__">check_op2_login</span>(<span class="variable">$link</span>))&#123;</span><br><span class="line">    <span class="title function_ invoke__">header</span>(<span class="string">&quot;location:op2_login.php&quot;</span>);</span><br><span class="line">    <span class="keyword">exit</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>代码分析：</p>
+<ul>
+<li><code>op2_admin.php</code> 做了”登录 + 级别”双重校验，是正确的；</li>
+<li><code>op2_admin_edit.php</code> 只校验了登录状态，<strong>任何 level 的用户都能进</strong>——包括 level&#x3D;2 的普通用户、level&#x3D;3 的 test 用户；</li>
+<li>源码注释同样直接点破：”这里只是验证了登录状态，并没有验证级别”；</li>
+<li>这个模式的现实版非常常见：菜单按权限渲染了（前端看不到按钮），但接口忘了校验——**前端隐藏不是权限控制，只是”眼不见”**。</li>
+</ul>
+<p>把两关并排看，越权的成因其实只有一句：<strong>权限判断应该由服务端基于登录态计算，任何来自前端的”我是谁&#x2F;我要操作谁”都不能直接当权限依据</strong>。</p>
+<hr>
+<h2 id="四、修复方案"><a href="#四、修复方案" class="headerlink" title="四、修复方案"></a>四、修复方案</h2><p>越权的修复原则只有一条：<strong>每一个涉及数据或功能的操作，都在服务端用登录态重新算一遍权限</strong>。具体三条：① 身份只认 Session&#x2F;Token 里的值，绝不接受前端传的 username、userid 当”我是谁”；② 水平方向——查询、修改、删除前先校验数据归属（<code>where id=? and owner_id=?</code>，或先查出来再比对 <code>owner_id == session.user_id</code>，不匹配返回 403 而不是 404 之外的花样提示）；③ 垂直方向——把权限校验做成统一拦截器&#x2F;中间件（路由级注解或 <code>before</code> 钩子），按”角色-功能”矩阵校验，而不是在每个页面里手写 <code>if</code>，只要有一个页面漏写就是缺口。再往上，ID 用不可枚举的 UUID、敏感操作二次验证（改密码要原密码）、权限变更记审计日志，都算加固。</p>
+<hr>
+<h2 id="五、免责声明"><a href="#五、免责声明" class="headerlink" title="五、免责声明"></a>五、免责声明</h2><p>本文所有操作均在<strong>本人本地搭建的 Pikachu 靶场</strong>中完成，<br>Pikachu 是公开的、专用于安全教学的漏洞练习平台。<br>文中涉及的技术仅用于学习与防御研究，<strong>不得用于任何未授权的系统</strong>。<br>对真实系统进行未授权的渗透测试属于违法行为。</p>
+<hr>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io">Qu0rtz-blip</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Overpermission/">https://qu0rtz-blip.github.io/2026/11/26/Pikachu-Overpermission/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://qu0rtz-blip.github.io" target="_blank">Qu0rtz-blip 的博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/Pikachu%E9%9D%B6%E5%9C%BA/">Pikachu靶场</a><a class="post-meta__tags" href="/tags/%E8%B6%8A%E6%9D%83/">越权</a><a class="post-meta__tags" href="/tags/%E6%B0%B4%E5%B9%B3%E8%B6%8A%E6%9D%83/">水平越权</a><a class="post-meta__tags" href="/tags/%E5%9E%82%E7%9B%B4%E8%B6%8A%E6%9D%83/">垂直越权</a></div><div class="post-share"><div class="social-share" data-image="/img/cover-1.jpg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含"><img class="cover" src="/img/cover-5.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">Pikachu靶场通关：文件包含</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）文件包含通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 File Inclusion 模块两个关卡的通关过程。这一关的输入是一个”文件名”，而文件名决定了服务器去执行哪个文件——打完两关再回源码，看一行 include &quot;include...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img class="cover" src="/img/cover-2.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Pikachu靶场通关：目录遍历与信息泄露</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）目录遍历与敏感信息泄露通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Directory Traversal（目录遍历）与 Sensitive Information Leak（敏感信息泄露）两个模块的通关过程。这两个漏洞危害等级都不高，但性质不...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/11/12/Pikachu-XSS/" title="Pikachu靶场通关：XSS"><img class="cover" src="/img/cover-4.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：XSS</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XSS 跨站脚本攻击通关记录 实验环境：Windows 10 + Pikachu + Edge   本次记录皮卡丘靶场 XSS 模块全部 10 个小关卡的通关过程。XSS 的本质是用户输入被浏览器当成了代码执行：同样是往一个框里贴 payload，有的贴在 HTML 正文里、有的贴在标签属性里、有的贴在 JS 字符串里、有的贴在 href 里——输出位置不同，闭合和触...</div></div></div></a><a class="pagination-related" href="/2026/11/12/Pikachu-BruteForce/" title="Pikachu靶场通关：Brute Force"><img class="cover" src="/img/cover-6.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-12</div><div class="info-item-2">Pikachu靶场通关：Brute Force</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）第一关「暴力破解」通关记录 实验环境：Windows 10 + Pikachu + Burp Suite Community  + ffuf靶场地址：http://127.0.0.1/pikachu/     本次记录皮卡丘靶场第一关「暴力破解」的完整通关过程。这一关共四个递进的小关卡，每一关都在前一关的基础上加了一层”看起来有用”的防护；  打完四关之后回到源码，分...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-URL-Redirect/" title="Pikachu靶场通关：URL重定向"><img class="cover" src="/img/cover-5.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：URL重定向</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）URL 重定向通关记录 实验环境：Windows 10 + Pikachu + Burp Suite   本次记录皮卡丘靶场 Unsafe URL Redirect（不安全的 URL 跳转）模块的通关过程。这一关的输入是一个跳转目标，改掉它，页面就跳去了别的地方——漏洞本身不复杂，麻烦的是它常被用来做钓饵，或者当成绕过白名单的跳板。   一、URL 重定向1.1 什么...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img class="cover" src="/img/cover-2.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：目录遍历与信息泄露</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）目录遍历与敏感信息泄露通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Directory Traversal（目录遍历）与 Sensitive Information Leak（敏感信息泄露）两个模块的通关过程。这两个漏洞危害等级都不高，但性质不...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-Upload-Download/" title="Pikachu靶场通关：文件上传与下载"><img class="cover" src="/img/cover-4.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：文件上传与下载</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）不安全文件上传与下载通关记录 实验环境：Windows 10 + Pikachu + Burp Suite + 蚁剑靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 Unsafe File Upload 与 Unsafe File Download 两个模块的通关过程。这两个漏洞是一对镜像：上传是”让服务器执行我给的文件”，下载是”...</div></div></div></a><a class="pagination-related" href="/2026/11/26/Pikachu-XXE/" title="Pikachu靶场通关：XXE"><img class="cover" src="/img/cover-3.jpg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-11-26</div><div class="info-item-2">Pikachu靶场通关：XXE</div></div><div class="info-2"><div class="info-item-1">皮卡丘（Pikachu）XXE 通关记录 实验环境：Windows 10 + Pikachu + Burp Suite靶场地址：http://127.0.0.1/pikachu/   本次记录皮卡丘靶场 XXE 模块的通关过程。这一关的输入从”字符串”换成了”一整个 XML 文档”，打完关再回源码，看一个解析选项怎么把”读文件”的能力送给了任意访客。   一、XXE1.1 什么是 XXEXX...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Qu0rtz-blip</div><div class="author-info-description">信息安全学习笔记 · CTF 与漏洞复现</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">20</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">60</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Qu0rtz-blip"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Qu0rtz-blip" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">欢迎来到我的博客，这里记录 CTF 与漏洞复现的学习过程 📝</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9A%AE%E5%8D%A1%E4%B8%98%EF%BC%88Pikachu%EF%BC%89%E8%B6%8A%E6%9D%83%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.</span> <span class="toc-text">皮卡丘（Pikachu）越权通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E8%B6%8A%E6%9D%83"><span class="toc-number">1.1.</span> <span class="toc-text">一、越权</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E4%B8%A4%E4%B8%AA%E6%96%B9%E5%90%91"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 两个方向</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%B8%B8%E8%A7%81%E5%87%BA%E9%97%AE%E9%A2%98%E7%9A%84%E5%9C%B0%E6%96%B9"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 常见出问题的地方</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E5%85%B3%E5%8D%A1%E5%85%A5%E5%8F%A3"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 关卡入口</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%80%9A%E5%85%B3%E8%AE%B0%E5%BD%95"><span class="toc-number">1.2.</span> <span class="toc-text">二、通关记录</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-%E6%B0%B4%E5%B9%B3%E8%B6%8A%E6%9D%83%EF%BC%9A%E6%8D%A2%E4%B8%80%E4%B8%AA-username-%E5%B0%B1%E7%9C%8B%E5%88%AB%E4%BA%BA%E7%9A%84%E8%B5%84%E6%96%99"><span class="toc-number">1.2.1.</span> <span class="toc-text">2.1 水平越权：换一个 username 就看别人的资料</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-%E5%9E%82%E7%9B%B4%E8%B6%8A%E6%9D%83%EF%BC%9A%E6%99%AE%E9%80%9A%E7%94%A8%E6%88%B7%E7%9B%B4%E6%8E%A5%E7%94%A8%E7%AE%A1%E7%90%86%E5%91%98%E7%9A%84%E5%8A%9F%E8%83%BD"><span class="toc-number">1.2.2.</span> <span class="toc-text">2.2 垂直越权：普通用户直接用管理员的功能</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%9A%E6%BC%8F%E6%B4%9E%E6%98%AF%E6%80%8E%E4%B9%88%E5%86%99%E5%87%BA%E6%9D%A5%E7%9A%84"><span class="toc-number">1.3.</span> <span class="toc-text">三、源码分析：漏洞是怎么写出来的</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E5%85%B3%E5%8D%A1%EF%BC%9A%E7%94%A8%E5%89%8D%E7%AB%AF%E4%BC%A0%E7%9A%84%E5%80%BC%E4%BB%A3%E6%9B%BF%E7%99%BB%E5%BD%95%E6%80%81%EF%BC%88%E6%B0%B4%E5%B9%B3%E8%B6%8A%E6%9D%83%EF%BC%89"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 关卡：用前端传的值代替登录态（水平越权）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E5%85%B3%E5%8D%A1%EF%BC%9A%E5%90%8C%E4%B8%80%E6%A8%A1%E5%9D%97%E4%B8%A4%E5%A5%97%E6%A0%A1%E9%AA%8C%E6%A0%87%E5%87%86%EF%BC%88%E5%9E%82%E7%9B%B4%E8%B6%8A%E6%9D%83%EF%BC%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 关卡：同一模块两套校验标准（垂直越权）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E4%BF%AE%E5%A4%8D%E6%96%B9%E6%A1%88"><span class="toc-number">1.4.</span> <span class="toc-text">四、修复方案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E"><span class="toc-number">1.5.</span> <span class="toc-text">五、免责声明</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露"><img src="/img/cover-2.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：目录遍历与信息泄露"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Dir-Traversal-Info-Leak/" title="Pikachu靶场通关：目录遍历与信息泄露">Pikachu靶场通关：目录遍历与信息泄露</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权"><img src="/img/cover-1.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：越权"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-Overpermission/" title="Pikachu靶场通关：越权">Pikachu靶场通关：越权</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含"><img src="/img/cover-5.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：文件包含"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-File-Inclusion/" title="Pikachu靶场通关：文件包含">Pikachu靶场通关：文件包含</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化"><img src="/img/cover-3.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：PHP反序列化"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-PHP-Unserialize/" title="Pikachu靶场通关：PHP反序列化">Pikachu靶场通关：PHP反序列化</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE"><img src="/img/cover-6.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Pikachu靶场通关：RCE"/></a><div class="content"><a class="title" href="/2026/11/26/Pikachu-RCE/" title="Pikachu靶场通关：RCE">Pikachu靶场通关：RCE</a><time datetime="2026-11-26T04:00:00.000Z" title="发表于 2026-11-26 12:00:00">2026-11-26</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Qu0rtz-blip</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.2</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.2"></script><script src="/js/main.js?v=5.7.2"></script><div class="js-pjax"></div><script src="/js/click-effect.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
